@@ -29,7 +29,6 @@ from mobility.mobility_utils import *
 from mobility.read_gs import *
 from routing.routing_utils import *
 from routing.constellation_routing import *
-from comm_protocol.controller_main import *
 
 gs_Alan = {
     "gid": 0,
@@ -108,8 +107,8 @@ while 1:
     ts = load.timescale()
     t = ts.now()
     addthis += 1
-    t = ts.utc(int(2022), int(3), int(31), int(11), int(9), float(9)+addthis)
+    t = ts.utc(int(2022), int(7), int(25), int(15), int(15), float(0)+addthis)
     print t.utc_strftime()
     # print t.utc_strftime()
     connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
-    connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", t, 1, GS_SAT_Table)
+    connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET_ALAN", t)

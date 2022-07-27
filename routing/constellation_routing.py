@@ -22,7 +22,7 @@ from routing.routing_utils import *
 def gs_routing_worker (data_path, gs_sat, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes):
     update_gsl_routing_cmd = []
     gs_number = int(gs_sat[1])%num_of_satellites
-    gs_ip = get_gs_ip(list_of_Intf_IPs, "gs"+str(gs_number)+"-eth1").split("/")[0]
+    gs_ip = get_gs_ip(list_of_Intf_IPs, "gs"+str(gs_number)+"-eth0").split("/")[0]
     gs_network_address = get_network_address(gs_ip)
     thread_list = []
     for i in range(num_of_satellites):
@@ -102,7 +102,7 @@ def initial_routing_v2(satellites, ground_stations, connectivity_matrix, latency
                 mega_constellation_graph.add_edge(i, j, weight=latency[i][j])
 
     static_routing_list_args = []
-    print "number of egdes ", len(mega_constellation_graph.edges())
+    # print "number of egdes ", len(mega_constellation_graph.edges())
     for p in range(len(satellites)+len(ground_stations)):#len(satellites)+len(ground_stations)
         for q in range(p, len(satellites)):#+len(ground_stations)
             static_routing_list_args.append((mega_constellation_graph, p, q))
@@ -188,63 +188,81 @@ def static_routing_update_commands(static_routes, links, list_of_Intf_IPs, satel
                 cmd_on_dest_node = "ip route add "+get_network_address(get_node_intf_ip(src_node_intf, list_of_Intf_IPs))+"/28 via "+get_node_intf_ip(last_h_node_intf, list_of_Intf_IPs)+" dev "+dest_node_intf
                 print cmd_on_dest_node
 
-
-def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites, intfs_to_physcial):
+def get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satellites):
     parameters = []
     current_route = route[0];
+    src_node        = ""
+    next_hop_node   = ""
+    dest_node       = ""
+    last_hop_node   = ""
+
     if len(current_route) > 2:
         src_node, next_hop_node, dest_node, last_hop_node = current_route[0], current_route[1], current_route[len(current_route)-1], current_route[len(current_route)-2]
+    elif len(current_route) == 2:
+        src_node, next_hop_node, dest_node, last_hop_node = current_route[0], current_route[1], current_route[1], current_route[0]
 
+    if src_node != "":
         src_node = "sat"+str(src_node) if src_node < len(satellites) else "gs"+str(src_node%len(satellites))
         next_hop_node = "sat"+str(next_hop_node) if next_hop_node < len(satellites) else "gs"+str(next_hop_node%len(satellites))
         dest_node = "sat"+str(dest_node) if dest_node < len(satellites) else "gs"+str(dest_node%len(satellites))
         last_hop_node = "sat"+str(last_hop_node) if last_hop_node < len(satellites) else "gs"+str(last_hop_node%len(satellites))
 
-        # print src_node, next_hop_node, dest_node, last_hop_node
         src_node_intf = ""
         dest_node_intf= ""
         next_h_node_intf = ""
         last_h_node_intf = ""
 
-        for link in links:
-            if str(src_node)+str("-") in link and str(next_hop_node)+str("-") in link:
-                #print str(link)
-                intfs = link.split(":")
-                if str(src_node) in intfs[0] and str(next_hop_node) in intfs[1]:
-                    src_node_intf = intfs[0]
-                    next_h_node_intf = intfs[1]
-                elif str(src_node) in intfs[1] and str(next_hop_node) in intfs[0]:
-                    src_node_intf = intfs[1]
-                    next_h_node_intf = intfs[0]
+        key1 = str(src_node)+"_"+str(next_hop_node)
+        key2 = str(next_hop_node)+"_"+str(src_node)
+        if links.get(key1) is not None:
+            link = links[key1][0]
+        elif links.get(key2) is not None:
+            link = links[key2][0]
+        if link != "":
+            intfs = link.split(":")
+            if str(src_node) in intfs[0] and str(next_hop_node) in intfs[1]:
+                src_node_intf = intfs[0]
+                next_h_node_intf = intfs[1]
+            elif str(src_node) in intfs[1] and str(next_hop_node) in intfs[0]:
+                src_node_intf = intfs[1]
+                next_h_node_intf = intfs[0]
 
-            if str(dest_node)+str("-") in link and str(last_hop_node)+str("-") in link:
-                #print str(link)
-                intfs = link.split(":")
-                if str(dest_node) in intfs[0] and str(last_hop_node) in intfs[1]:
-                    dest_node_intf = intfs[0]
-                    last_h_node_intf = intfs[1]
-                elif str(dest_node) in intfs[1] and str(last_hop_node) in intfs[0]:
-                    dest_node_intf = intfs[1]
-                    last_h_node_intf = intfs[0]
 
-        # print dest_node_intf
+        key1 = str(last_hop_node)+"_"+str(dest_node)
+        key2 = str(dest_node)+"_"+str(last_hop_node)
+        if links.get(key1) is not None:
+            link = links[key1][0]
+        elif links.get(key2) is not None:
+            link = links[key2][0]
+        if link != "":
+            intfs = link.split(":")
+            if str(dest_node) in intfs[0] and str(last_hop_node) in intfs[1]:
+                dest_node_intf = intfs[0]
+                last_h_node_intf = intfs[1]
+            elif str(dest_node) in intfs[1] and str(last_hop_node) in intfs[0]:
+                dest_node_intf = intfs[1]
+                last_h_node_intf = intfs[0]
+
         if dest_node_intf != "":
-            #print get_node_intf_ip(dest_node_intf, list_of_Intf_IPs)
-            dest_nw_ip = get_network_address(get_node_intf_ip(dest_node_intf, list_of_Intf_IPs).split("/")[0])+"/28"
-            next_hop_ip = get_node_intf_ip(next_h_node_intf, list_of_Intf_IPs)
+            dest_ip_address = list_of_Intf_IPs[str(dest_node_intf)][0]
+            next_hop_ip = list_of_Intf_IPs[str(next_h_node_intf)][0]
             out_interface = src_node_intf
+            # print dest_ip_address
+            dest_nw_ip = get_network_address(dest_ip_address.split("/")[0])+"/28"
         else:
             print "Error: No link between ", str(last_hop_node), " and ", str(dest_node)
             exit()
 
         if src_node_intf != "":
-            #print get_node_intf_ip(src_node_intf, list_of_Intf_IPs)
-            src_nw_ip = get_network_address(get_node_intf_ip(src_node_intf, list_of_Intf_IPs).split("/")[0])+"/28"
-            last_hop_ip = get_node_intf_ip(last_h_node_intf, list_of_Intf_IPs)
+            src_ip_address = list_of_Intf_IPs[str(src_node_intf)][0]
+            last_hop_ip = list_of_Intf_IPs[str(last_h_node_intf)][0]
             out_interface_2 = dest_node_intf
+            # print src_ip_address
+            src_nw_ip = get_network_address(src_ip_address.split("/")[0])+"/28"
         else:
             print "Error: No link between ", str(src_node), " and ", str(next_hop_node)
             exit()
+
 
         parameters.append(src_node)
         parameters.append(dest_nw_ip)
@@ -256,17 +274,32 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites, intfs
         parameters.append(last_hop_ip)
         parameters.append(out_interface_2)
 
-        # return parameters
+        # parameters.append(src_node)
+        # parameters.append(dest_node)
+        # parameters.append(next_hop_node)
+        # parameters.append(last_hop_node)
+        #
+        # parameters.append(src_nw_ip)
+        # parameters.append(dest_nw_ip)
+        # parameters.append(next_hop_ip)
+        # parameters.append(last_hop_ip)
+        #
+        # parameters.append(out_interface)
+        # parameters.append(out_interface_2)
 
-    if len(current_route) == 2:
-        src_node, next_hop_node, dest_node, last_hop_node = current_route[0], current_route[1], current_route[1], current_route[0]
+    return parameters
+
+def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites):
+    parameters = []
+    current_route = route[0];
+    if len(current_route) > 2:
+        src_node, next_hop_node, dest_node, last_hop_node = current_route[0], current_route[1], current_route[len(current_route)-1], current_route[len(current_route)-2]
 
         src_node = "sat"+str(src_node) if src_node < len(satellites) else "gs"+str(src_node%len(satellites))
         next_hop_node = "sat"+str(next_hop_node) if next_hop_node < len(satellites) else "gs"+str(next_hop_node%len(satellites))
         dest_node = "sat"+str(dest_node) if dest_node < len(satellites) else "gs"+str(dest_node%len(satellites))
         last_hop_node = "sat"+str(last_hop_node) if last_hop_node < len(satellites) else "gs"+str(last_hop_node%len(satellites))
 
-        # print src_node, next_hop_node, dest_node, last_hop_node
         src_node_intf = ""
         dest_node_intf= ""
         next_h_node_intf = ""
@@ -291,7 +324,6 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites, intfs
                     dest_node_intf = intfs[1]
                     last_h_node_intf = intfs[0]
 
-        # print dest_node_intf
         if dest_node_intf != "":
             dest_nw_ip = get_network_address(get_node_intf_ip(dest_node_intf, list_of_Intf_IPs).split("/")[0])+"/28"
             next_hop_ip = get_node_intf_ip(next_h_node_intf, list_of_Intf_IPs)
@@ -309,13 +341,77 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites, intfs
             exit()
 
         parameters.append(src_node)
+        parameters.append(dest_node)
+        parameters.append(next_hop_node)
+        parameters.append(last_hop_node)
+
+        parameters.append(src_nw_ip)
         parameters.append(dest_nw_ip)
         parameters.append(next_hop_ip)
-        parameters.append(out_interface)
-
-        parameters.append(dest_node)
-        parameters.append(src_nw_ip)
         parameters.append(last_hop_ip)
+
+        parameters.append(out_interface)
+        parameters.append(out_interface_2)
+
+    if len(current_route) == 2:
+        src_node, next_hop_node, dest_node, last_hop_node = current_route[0], current_route[1], current_route[1], current_route[0]
+
+        src_node = "sat"+str(src_node) if src_node < len(satellites) else "gs"+str(src_node%len(satellites))
+        next_hop_node = "sat"+str(next_hop_node) if next_hop_node < len(satellites) else "gs"+str(next_hop_node%len(satellites))
+        dest_node = "sat"+str(dest_node) if dest_node < len(satellites) else "gs"+str(dest_node%len(satellites))
+        last_hop_node = "sat"+str(last_hop_node) if last_hop_node < len(satellites) else "gs"+str(last_hop_node%len(satellites))
+
+        src_node_intf = ""
+        dest_node_intf= ""
+        next_h_node_intf = ""
+        last_h_node_intf = ""
+
+        for link in links:
+            if str(src_node)+str("-") in link and str(next_hop_node)+str("-") in link:
+                intfs = link.split(":")
+                if str(src_node) in intfs[0] and str(next_hop_node) in intfs[1]:
+                    src_node_intf = intfs[0]
+                    next_h_node_intf = intfs[1]
+                elif str(src_node) in intfs[1] and str(next_hop_node) in intfs[0]:
+                    src_node_intf = intfs[1]
+                    next_h_node_intf = intfs[0]
+
+            if str(dest_node)+str("-") in link and str(last_hop_node)+str("-") in link:
+                intfs = link.split(":")
+                if str(dest_node) in intfs[0] and str(last_hop_node) in intfs[1]:
+                    dest_node_intf = intfs[0]
+                    last_h_node_intf = intfs[1]
+                elif str(dest_node) in intfs[1] and str(last_hop_node) in intfs[0]:
+                    dest_node_intf = intfs[1]
+                    last_h_node_intf = intfs[0]
+
+        if dest_node_intf != "":
+            dest_nw_ip = get_network_address(get_node_intf_ip(dest_node_intf, list_of_Intf_IPs).split("/")[0])+"/28"
+            next_hop_ip = get_node_intf_ip(next_h_node_intf, list_of_Intf_IPs)
+            out_interface = src_node_intf
+        else:
+            print "Error: No link between ", str(last_hop_node), " and ", str(dest_node)
+            exit()
+
+        if src_node_intf != "":
+            src_nw_ip = get_network_address(get_node_intf_ip(src_node_intf, list_of_Intf_IPs).split("/")[0])+"/28"
+            last_hop_ip = get_node_intf_ip(last_h_node_intf, list_of_Intf_IPs)
+            out_interface_2 = dest_node_intf
+        else:
+            print "Error: No link between ", str(src_node), " and ", str(next_hop_node)
+            exit()
+
+        parameters.append(src_node)
+        parameters.append(dest_node)
+        parameters.append(next_hop_node)
+        parameters.append(last_hop_node)
+
+        parameters.append(src_nw_ip)
+        parameters.append(dest_nw_ip)
+        parameters.append(next_hop_ip)
+        parameters.append(last_hop_ip)
+
+        parameters.append(out_interface)
         parameters.append(out_interface_2)
 
     return parameters
@@ -346,17 +442,30 @@ def get_gs_ip(list_of_Intf_IPs, gs):
         if gs in pair["Interface"]:
             return pair["IP"]
 
+    return -1
+
 def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes):
     update_gsl_routing_cmd = []
     for gs_sat in gs_statellite_pair:
         gs_number = int(gs_sat[1])%num_of_satellites
-        gs_ip = get_gs_ip(list_of_Intf_IPs, "gs"+str(gs_number)+"-eth1").split("/")[0]
+
+        key = str("gs"+str(gs_number)+"-eth1")
+        # print key
+        if list_of_Intf_IPs.get(key) is None:
+            print "error -- no ip for this ground station", gs_number
+            return
+
+        gs_ip = list_of_Intf_IPs[key][0].split("/")[0]
         gs_network_address = get_network_address(gs_ip)
         thread_list = []
         for i in range(num_of_satellites):
             route_to_sat_GW = find_route_between_src_dest(i, gs_sat[0], constellation_routes)
+            # if key == "gs1-eth1":
+            #     print route_to_sat_GW
             if route_to_sat_GW != -1:
-                parameters = get_static_route_parameter([route_to_sat_GW], links_updated, list_of_Intf_IPs, satellites_by_index);
+                parameters = get_static_route_parameter_optimised([route_to_sat_GW], links_updated, list_of_Intf_IPs, satellites_by_index);
+                # if key == "gs1-eth1":
+                #     print parameters
                 if len(parameters) > 0:
                     update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(gs_network_address)+"/28 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
                 else:
@@ -400,8 +509,16 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
         if change[0] < num_of_satellites and change[1] >= num_of_satellites:
             # 1. Get the network address of the changing ground station
             gs_number = int(change[1])%num_of_satellites
-            gs_ip = get_gs_ip(list_of_Intf_IPs, "gs"+str(gs_number)+"-eth1").split("/")[0]
+            key = str("gs"+str(gs_number)+"-eth0")
+            if list_of_Intf_IPs.get(key) is None:
+                print "error -- no ip for this ground station", gs_number
+                return
+
+            gs_ip = list_of_Intf_IPs[key][0].split("/")[0]
             gs_network_address = get_network_address(gs_ip)
+
+            # gs_ip = get_gs_ip(list_of_Intf_IPs, "gs"+str(gs_number)+"-eth0").split("/")[0]
+            # gs_network_address = get_network_address(gs_ip)
 
             # 2. Find the route to the current gateway of that ground station. The current gateway is at change[0].
             #    The ground station is at change[1]. constellation_routes has all the current topology routes.
@@ -413,26 +530,13 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
             #         We generate the IP route command.
             thread_list = []
             for i in range(num_of_satellites):
-                # thread = threading.Thread(target=update_GSL_thread, args=(i, change, constellation_routes, links_updated, list_of_Intf_IPs, satellites_by_index, gs_network_address, update_gsl_routing_cmd))
-                # thread_list.append(thread)
-                #
-                # if i%20 == 0 and i != 0:
-                #     for thread in thread_list:
-                #         thread.start()
-                #     for thread in thread_list:
-                #         thread.join()
-                #
-                #     thread_list = []
 
-                # s1 = round(time.time()*1000)
                 route_to_sat_GW = find_route_between_src_dest(i, change[0], constellation_routes)
-                # end1 = round(time.time()*1000)
-                # print "find_route_between_src_dest ,", i, " ---- ", (end1-s1), " ms"
+
                 if route_to_sat_GW != -1:
-                    # s1 = round(time.time()*1000)
-                    parameters = get_static_route_parameter([route_to_sat_GW], links_updated, list_of_Intf_IPs, satellites_by_index);
-                    # end1 = round(time.time()*1000)
-                    # print "get_static_route_parameter ,", i, " ---- ", (end1-s1), " ms"
+
+                    parameters = get_static_route_parameter_optimised([route_to_sat_GW], links_updated, list_of_Intf_IPs, satellites_by_index);
+
                     if len(parameters) > 0:
                         if change[2] == 0 and change[3] == 1:
                             update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(gs_network_address)+"/28 via "+str(parameters[2])+" dev "+str(parameters[3]))
@@ -485,5 +589,6 @@ def check_changes_in_routes(last, new):
         for j in range(len(new[i])):
             if new[i][j] != last[i][j]:
                 changes.append((i, j, last[i][j], new[i][j]))
+                print i,j, last[i][j], new[i][j]
 
     return changes

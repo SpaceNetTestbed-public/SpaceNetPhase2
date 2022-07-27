@@ -16,12 +16,13 @@ import itertools
 from multiprocessing import Process, Manager, Pool
 
 
-def generate_ips_for_constellation():
+def generate_ips_for_constellation(ip_subnet):
+    ip_octs = ip_subnet.split(".")
     available_ips = []
-    for i in range (0, 250):
-        for j in range (0, 250):
+    for i in range (int(ip_octs[1]), 250):
+        for j in range (int(ip_octs[2]), 250):
             for k in range (0, 240, 16):
-                ip = str("10.")+str(i)+"."+str(j)+"."+str(k)
+                ip = str(str(ip_octs[0])+".")+str(i)+"."+str(j)+"."+str(k)
                 available_ips.append((1, ip))
 
     return available_ips

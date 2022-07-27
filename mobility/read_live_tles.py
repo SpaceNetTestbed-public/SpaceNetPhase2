@@ -38,8 +38,9 @@ def get_orbital_planes_classifications(tle_filename, shell_num):
     number_of_orbits            = 72
     number_of_sats_per_orbits   = 22
 
-    dump_orbital_data           = {"Satellites": [], "Inclination": [], "Longitude of the ascending node": []}
+    dump_orbital_data           = {"Satellites": [], "Inclination": [], "Longitude of the ascending node": [], "Mean anomaly": [], "elec": [], "argu": []}
 
+    print tle_filename
     tle_file = open(tle_filename, 'r')
     Lines = tle_file.readlines()
 
@@ -47,12 +48,16 @@ def get_orbital_planes_classifications(tle_filename, shell_num):
     # We read the three lines by three lines, and save satellite names, inclination and Longitude of the ascending node
     for i in range(0,len(Lines),3):
         tle_second_line = list(filter(None, Lines[i+2].strip("\n").split(" ")))
+        # print tle_second_line
 
         if shell_num == 1:
             if float(tle_second_line[2]) < 53.1: #Inclination of shell 1 should be 53.0 degrees
                 dump_orbital_data["Satellites"].append(Lines[i].strip())
                 dump_orbital_data["Inclination"].append(tle_second_line[2])
                 dump_orbital_data["Longitude of the ascending node"].append(tle_second_line[3])
+                dump_orbital_data["elec"].append(tle_second_line[4])
+                dump_orbital_data["argu"].append(tle_second_line[5])
+                dump_orbital_data["Mean anomaly"].append(tle_second_line[6])
 
     list_of_values = [-1 for c in range(len(dump_orbital_data["Longitude of the ascending node"]))]
     for i in range(0, len(dump_orbital_data["Longitude of the ascending node"])):
@@ -72,11 +77,11 @@ def get_orbital_planes_classifications(tle_filename, shell_num):
             if b == 1:
                 if float(dump_orbital_data["Longitude of the ascending node"][j]) <= upperBound_of_class and float(dump_orbital_data["Longitude of the ascending node"][j]) >= lowerBound_of_class:
                     # print dump_orbital_data["Satellites"][i], dump_orbital_data["Longitude of the ascending node"][j]
-                    data_orbits[dump_orbital_data["Satellites"][i]] = ("53.0", dump_orbital_data["Longitude of the ascending node"][j], class_num)#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
+                    data_orbits[dump_orbital_data["Satellites"][i]] = ("53.0", dump_orbital_data["Longitude of the ascending node"][j], class_num, class_num, dump_orbital_data["elec"][j], dump_orbital_data["argu"][j], dump_orbital_data["Mean anomaly"][j])#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
                     count_sats_per_orbit += 1
             else:
                 if float(dump_orbital_data["Longitude of the ascending node"][j]) <= upperBound_of_class and float(dump_orbital_data["Longitude of the ascending node"][j]) > lowerBound_of_class:
-                    data_orbits[dump_orbital_data["Satellites"][i]] = ("53.0", dump_orbital_data["Longitude of the ascending node"][j], class_num)#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
+                    data_orbits[dump_orbital_data["Satellites"][i]] = ("53.0", dump_orbital_data["Longitude of the ascending node"][j], class_num, dump_orbital_data["elec"][j], dump_orbital_data["argu"][j], dump_orbital_data["Mean anomaly"][j])#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
                     count_sats_per_orbit += 1
         # print "Num of Sats ----------------", count_sats_per_orbit
         totalsatellites += count_sats_per_orbit
@@ -309,7 +314,6 @@ def sort_satellites_in_orbit(satellites_in_orbit, t):
     first_sat = satellites_in_orbit[0]
     sorted_sats.append(first_sat)
     visited_sats.append(first_sat.name)
-
     for i in range(len(satellites_in_orbit)):
         next_hop = -1
         min_distance = 1000000000000000
@@ -327,38 +331,38 @@ def sort_satellites_in_orbit(satellites_in_orbit, t):
 
     return sorted_sats
 
-def main():
-    satellites = load.tle_file("https://celestrak.com/NORAD/elements/starlink.txt")
-    satellites_by_name = {sat.name: sat for sat in satellites}
-
-    if os.path.isfile("./starlink.txt"):
-        os.remove("./starlink.txt")
-
-    tle_url = "https://celestrak.com/NORAD/elements/supplemental/starlink.txt"
-    tle_file = wget.download(tle_url)
-
-    dump_orbital_data = get_orbital_planes("starlink.txt",1)
-    number_of_orbits = 72
-
-    ts = load.timescale()
-    t = ts.now()
-
-    satellites_sorted_in_orbits = []
-    for i in range(number_of_orbits):
-        satellites_in_orbit = []
-        for data in dump_orbital_data:
-            if i == int(data.values()[0][2]):
-                satellites_in_orbit.append(satellites_by_name[str(data.keys()[0])])
-
-        satellites_sorted_in_orbits.append(sort_satellites_in_orbit(satellites_in_orbit, t))
-
-    satellites_by_index = []
-    sat_index = -1
-    for orbit in satellites_sorted_in_orbits:
-        for i in range(len(orbit)):
-            sat_index += 1
-            satellites_by_index.append({sat_index: orbit[i]})
-            print sat_index, orbit[i].name
-
-    print satellites_by_index
-# main()
+# def main():
+#     satellites = load.tle_file("https://celestrak.com/NORAD/elements/starlink.txt")
+#     satellites_by_name = {sat.name: sat for sat in satellites}
+#
+#     if os.path.isfile("./starlink.txt"):
+#         os.remove("./starlink.txt")
+#
+#     tle_url = "https://celestrak.com/NORAD/elements/supplemental/starlink.txt"
+#     tle_file = wget.download(tle_url)
+#
+#     dump_orbital_data = get_orbital_planes("starlink.txt",1)
+#     number_of_orbits = 72
+#
+#     ts = load.timescale()
+#     t = ts.now()
+#
+#     satellites_sorted_in_orbits = []
+#     for i in range(number_of_orbits):
+#         satellites_in_orbit = []
+#         for data in dump_orbital_data:
+#             if i == int(data.values()[0][2]):
+#                 satellites_in_orbit.append(satellites_by_name[str(data.keys()[0])])
+#
+#         satellites_sorted_in_orbits.append(sort_satellites_in_orbit(satellites_in_orbit, t))
+#
+#     satellites_by_index = []
+#     sat_index = -1
+#     for orbit in satellites_sorted_in_orbits:
+#         for i in range(len(orbit)):
+#             sat_index += 1
+#             satellites_by_index.append({sat_index: orbit[i]})
+#             print sat_index, orbit[i].name
+#
+#     print satellites_by_index
+# # main()
