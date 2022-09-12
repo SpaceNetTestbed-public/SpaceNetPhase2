@@ -1,0 +1,16 @@
+experiment=2
+constellation=oneweb
+tle_file=https://celestrak.com/NORAD/elements/supplemental/oneweb.txt
+number_of_orbits=12
+number_of_sat_per_orbit=49
+altitude=1200
+elevation_angle=45
+inclination=87
+ground_stations=../mobility/ground_stations_small.txt
+mode=1
+Fresh_run=True
+False_run_archieve_path_foldername=../data_gen/archieved_data_2022,07,25,13,58,04.493310
+simulation_time(second)=10
+simulation_step(second)=1
+constellation_ip_range=11.0.0.0
+Debug=1

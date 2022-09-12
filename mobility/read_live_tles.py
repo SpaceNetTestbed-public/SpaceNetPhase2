@@ -32,12 +32,9 @@ def get_orbital_planes(tle_filename, shell_num):
                 # print Lines[i].strip(), (tle_second_line[2], tle_second_line[3], orbital_num)
     return orbital_data
 
-def get_orbital_planes_classifications(tle_filename, shell_num):
+def get_orbital_planes_classifications(tle_filename, constellation, number_of_orbits, number_of_sats_per_orbits, orbits_inclination):
 
     data_orbits                 = {}
-    number_of_orbits            = 72
-    number_of_sats_per_orbits   = 22
-
     dump_orbital_data           = {"Satellites": [], "Inclination": [], "Longitude of the ascending node": [], "Mean anomaly": [], "elec": [], "argu": []}
 
     print tle_filename
@@ -48,16 +45,24 @@ def get_orbital_planes_classifications(tle_filename, shell_num):
     # We read the three lines by three lines, and save satellite names, inclination and Longitude of the ascending node
     for i in range(0,len(Lines),3):
         tle_second_line = list(filter(None, Lines[i+2].strip("\n").split(" ")))
-        # print tle_second_line
 
-        if shell_num == 1:
-            if float(tle_second_line[2]) < 53.1: #Inclination of shell 1 should be 53.0 degrees
+        if constellation == "starlink":
+            if float(tle_second_line[2]) < (orbits_inclination+0.1) and float(tle_second_line[2]) >= (orbits_inclination): #Inclination of Starlink shell 1 should be 53.0 degrees
                 dump_orbital_data["Satellites"].append(Lines[i].strip())
                 dump_orbital_data["Inclination"].append(tle_second_line[2])
                 dump_orbital_data["Longitude of the ascending node"].append(tle_second_line[3])
                 dump_orbital_data["elec"].append(tle_second_line[4])
                 dump_orbital_data["argu"].append(tle_second_line[5])
                 dump_orbital_data["Mean anomaly"].append(tle_second_line[6])
+        else:
+            if float(tle_second_line[2]) < (orbits_inclination+1) and float(tle_second_line[2]) >= (orbits_inclination): #Inclination of Starlink shell 1 should be 53.0 degrees
+                dump_orbital_data["Satellites"].append(Lines[i].strip())
+                dump_orbital_data["Inclination"].append(tle_second_line[2])
+                dump_orbital_data["Longitude of the ascending node"].append(tle_second_line[3])
+                dump_orbital_data["elec"].append(tle_second_line[4])
+                dump_orbital_data["argu"].append(tle_second_line[5])
+                dump_orbital_data["Mean anomaly"].append(tle_second_line[6])
+
 
     list_of_values = [-1 for c in range(len(dump_orbital_data["Longitude of the ascending node"]))]
     for i in range(0, len(dump_orbital_data["Longitude of the ascending node"])):
@@ -77,11 +82,11 @@ def get_orbital_planes_classifications(tle_filename, shell_num):
             if b == 1:
                 if float(dump_orbital_data["Longitude of the ascending node"][j]) <= upperBound_of_class and float(dump_orbital_data["Longitude of the ascending node"][j]) >= lowerBound_of_class:
                     # print dump_orbital_data["Satellites"][i], dump_orbital_data["Longitude of the ascending node"][j]
-                    data_orbits[dump_orbital_data["Satellites"][i]] = ("53.0", dump_orbital_data["Longitude of the ascending node"][j], class_num, class_num, dump_orbital_data["elec"][j], dump_orbital_data["argu"][j], dump_orbital_data["Mean anomaly"][j])#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
+                    data_orbits[dump_orbital_data["Satellites"][i]] = (str(orbits_inclination), dump_orbital_data["Longitude of the ascending node"][j], class_num, class_num, dump_orbital_data["elec"][j], dump_orbital_data["argu"][j], dump_orbital_data["Mean anomaly"][j])#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
                     count_sats_per_orbit += 1
             else:
                 if float(dump_orbital_data["Longitude of the ascending node"][j]) <= upperBound_of_class and float(dump_orbital_data["Longitude of the ascending node"][j]) > lowerBound_of_class:
-                    data_orbits[dump_orbital_data["Satellites"][i]] = ("53.0", dump_orbital_data["Longitude of the ascending node"][j], class_num, dump_orbital_data["elec"][j], dump_orbital_data["argu"][j], dump_orbital_data["Mean anomaly"][j])#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
+                    data_orbits[dump_orbital_data["Satellites"][i]] = (str(orbits_inclination), dump_orbital_data["Longitude of the ascending node"][j], class_num, dump_orbital_data["elec"][j], dump_orbital_data["argu"][j], dump_orbital_data["Mean anomaly"][j])#Satellite name: (Inclination, Longitude of the ascending node, orbital number)
                     count_sats_per_orbit += 1
         # print "Num of Sats ----------------", count_sats_per_orbit
         totalsatellites += count_sats_per_orbit

@@ -382,12 +382,12 @@ def get_sats_by_name(filename):
     return satellites
 
 def parse_config_file(filepath, filename):
-    configurations = {"simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "constellation":"starlink", "experiment":2, "constellation_ip_range":"" , "False_run_archieve_path_foldername":"" ,"Debug":1}
+    configurations = {"simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "inclination":0, "constellation":"starlink", "tle_file":"", "number_of_orbits":0, "number_of_sat_per_orbit":0, "altitude":0, "elevation_angle":0, "experiment":2, "constellation_ip_range":"" , "False_run_archieve_path_foldername":"" ,"Debug":1}
     configFile = open(filepath+"/"+filename, 'r')
     configs = configFile.readlines()
 
     for config in configs:
-        config_parameters = config.split(":")
+        config_parameters = config.split("=")
         if config_parameters[1].strip().isdigit():
             configurations[str(config_parameters[0])]=int(config_parameters[1].strip())
         elif config_parameters[1].strip() == "False" or config_parameters[1].strip() == "True":
@@ -404,7 +404,7 @@ def main():
 
     # experiment 2 => Normal run with Starlink constellation and 100 Groud station read from ground_station.txt file
     # experiment 1 => Focusing on Alan's calibration experiment
-    main_configurations = parse_config_file(".","config.txt")
+    main_configurations = parse_config_file(".","starlink_config.txt")
     number_of_orbits = 0
     print main_configurations
     if main_configurations["experiment"] == 1:
@@ -470,12 +470,12 @@ def main():
         data_path = "../data_gen/archieved_data_"+str(loggedTime)
         os.mkdir(data_path)
 
-        if main_configurations["constellation"]=="starlink":
-            tle_url = "https://celestrak.com/NORAD/elements/supplemental/starlink.txt"
-            number_of_orbits = 72
+
+        tle_url = main_configurations["tle_file"]
+        number_of_orbits = main_configurations["number_of_orbits"]
 
         tle_file = wget.download(tle_url, out = data_path)
-        satellites = load.tle_file("https://celestrak.com/NORAD/elements/supplemental/starlink.txt")
+        satellites = load.tle_file(main_configurations["tle_file"])
 
         satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
         satellites_by_index = {}
@@ -488,16 +488,16 @@ def main():
                 if main_configurations["Debug"]==1:
                     print "Satellite ", satellites_by_name.items()[i], " is a physical sateellite "
 
-        orbital_data = get_orbital_planes_classifications(data_path+"/starlink.txt",1)
+        orbital_data = get_orbital_planes_classifications(data_path+"/"+main_configurations["constellation"]+".txt", main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
 
     elif main_configurations["Fresh_run"] == False:
         actual_time = get_time(data_path+"/time_log.txt")
         if main_configurations["Debug"]==1:
             print " The Actual real time for the simulation is ", actual_time["tt"].utc_strftime()
 
-        if main_configurations["constellation"]=="starlink":
-            satellites = load.tle_file("https://celestrak.com/NORAD/elements/supplemental/starlink.txt")
-            number_of_orbits = 72
+
+        satellites = load.tle_file(main_configurations["tle_file"])
+        number_of_orbits = main_configurations["number_of_orbits"]
 
         satellites_by_name_from_file = get_sats_by_name(data_path+"/satellites_by_name_log.txt")
         satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites if sat.name.split(" ")[0] in satellites_by_name_from_file}
@@ -511,7 +511,7 @@ def main():
                 if main_configurations["Debug"]==1:
                     print "Satellite ", satellites_by_name.items()[i], " is a physical sateellite "
 
-        orbital_data = get_orbital_planes_classifications(data_path+"/starlink.txt",1)
+        orbital_data = get_orbital_planes_classifications(data_path+"/"+main_configurations["constellation"]+".txt", main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
 
 ############################################################################################################################################################
 ############################################################################################################################################################
@@ -578,10 +578,10 @@ def main():
     start = round(time.time()*1000)
     if main_configurations["Fresh_run"] == False:
         connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time["tt"])
-        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time["tt"])
+        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time["tt"], main_configurations)
     elif main_configurations["Fresh_run"] == True:
         connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time)
-        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time)
+        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time, main_configurations)
     end = round(time.time()*1000)
     if main_configurations["Debug"] == 1:
         print ".......... Initial Connectivity Matrix for", main_configurations["constellation"], "Constellation is created in", (end-start)/1000, "secs"
@@ -707,7 +707,7 @@ def main():
 
         start = round(time.time()*1000)
         new_CMatrix = mininet_add_ISLs(new_CMatrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time_increment)
-        new_CMatrix = mininet_add_GSLs(new_CMatrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time_increment, 1, new_GS_SAT_Table)
+        new_CMatrix = mininet_add_GSLs(new_CMatrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time_increment, main_configurations)
         end = round(time.time()*1000)
 
         # print " Re calculate the ISL and GSL links took ", end-start, "ms "
