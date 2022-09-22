@@ -47,7 +47,8 @@ def read_gs(filename_ground_stations_extended):
                 "cartesian_x": float(split[5]),
                 "cartesian_y": float(split[6]),
                 "cartesian_z": float(split[7]),
-                "type": int(split[8])
+                "type": int(split[8]),
+                "next_update": ""
             }
             ground_stations_extended.append(ground_station_basic)
             gid += 1

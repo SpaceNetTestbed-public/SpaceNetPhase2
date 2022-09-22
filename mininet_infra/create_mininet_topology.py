@@ -42,7 +42,7 @@ def static_routes_batch_worker(args):
         parameters = get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satellites_by_index)
         if len(parameters) > 0:
             commands += str(parameters[0])+" ip route add "+str(parameters[1])+" via "+str(parameters[2].split("/")[0])+" dev "+str(parameters[3])+" & \n"+str(parameters[4])+" ip route add "+str(parameters[5])+" via "+str(parameters[6].split("/")[0])+" dev "+str(parameters[7])+" & \n"
-
+                
     return commands
 
 class LinuxRouter( Node ):	# from the Mininet library

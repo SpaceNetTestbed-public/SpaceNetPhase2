@@ -444,7 +444,7 @@ def get_gs_ip(list_of_Intf_IPs, gs):
 
     return -1
 
-def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes):
+def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes, main_configurations):
     update_gsl_routing_cmd = []
     for gs_sat in gs_statellite_pair:
         gs_number = int(gs_sat[1])%num_of_satellites
@@ -468,6 +468,8 @@ def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, 
                 #     print parameters
                 if len(parameters) > 0:
                     update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(gs_network_address)+"/28 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
+                    if main_configurations["interDomain_routing"] == 1 and "gs"+str(gs_number) == main_configurations["exit_gw"]:
+                        update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(main_configurations["other_constellation_ip_range"])+"/20 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
                 else:
                     print route_to_sat_GW
 

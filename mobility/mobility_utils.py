@@ -22,8 +22,6 @@ def calc_max_gsl_length(main_configurations):
 
     return max_gsl_length_m
 
-
-# max_gsl_length_m = 1089686.4181956202;
 channnel_bandwidth_downlink = 240
 channnel_bandwidth_uplink = 60
 number_of_users_per_cell = 4.0
@@ -213,7 +211,7 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
     max_gsl_length_m = calc_max_gsl_length(main_configurations)
     if main_configurations["Debug"] == 1:
         print ".......... Maximum GSL links for", main_configurations["constellation"], "Constellation is ", max_gsl_length_m, " meters"
-        
+
     if max_gsl_length_m == -1:
         if main_configurations["Debug"] == 1:
             print ("[Mininet_add_GSLs] --- check the max GSL length variable ")
@@ -227,7 +225,7 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
 
 
     # print association_criteria
-    if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET":
+    if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET" or association_criteria == "BASED_ON_LONGEST_ASSOCIATION_TIME" :
         pool = Pool(number_of_threads)
         ground_station_satellites_in_range_temporary = pool.map(calc_distance_gs_sat_worker, list_args)
         pool.close()
@@ -246,6 +244,10 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
 
     if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET_ALAN":
         return M_gs_sat_no_association_criteria(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, len(satellites_by_index), t, satellites_by_index)
+
+    if association_criteria == "BASED_ON_LONGEST_ASSOCIATION_TIME":
+        return M_gs_sat_association_criteria_MaxAssociationTime(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, len(satellites_by_index), satellites_by_index, satellites_by_name, max_gsl_length_m, t)
+
     return -1
 
 
@@ -269,6 +271,70 @@ def M_gs_sat_no_association_criteria(connectivity_matrix, all_gs_satellites_in_r
         # print "best distance ",1, sid, distance_m, az, alt
 
     return connectivity_matrix
+
+def last_visible_satellite(ground_station, all_gs_satellites_in_range, number_of_satellites, satellites_by_index, satellites_by_name, max_gsl_length_m, t):
+
+    step = 10       #in seconds
+
+    dt, leap_second = t.utc_datetime_and_leap_second()
+    newscs = ((str(dt).split(" ")[1]).split(":")[2]).split("+")[0]
+    date, timeN, zone = t.utc_strftime().split(" ")
+    year, month, day = date.split("-")
+    hour, minute, second = timeN.split(":")
+    loggedTime = str(year)+","+str(month)+","+str(day)+","+str(hour)+","+str(minute)+","+str(newscs)
+
+
+    ts = load.timescale()
+    loop_t = ts.utc(int(year), int(month), int(day), int(hour), int(minute), float(newscs))
+
+    # print loop_t
+
+    visible_sats = []
+    for entry in all_gs_satellites_in_range:
+        for val in entry:
+            if len(val) > 0:
+                if int(ground_station["gid"]) == int(val[0][2]):
+                    visible_sats.append(val[0][1])
+
+    number_of_visible_sats = len(visible_sats)
+
+    cnt = 0
+    while number_of_visible_sats > 1:
+        loop_t = ts.utc(int(year), int(month), int(day), int(hour), int(minute), float(newscs)+cnt)
+        number_of_visible_sats = 0
+        new_visible_sats = []
+        for sat in visible_sats:
+            satellite_name = satellites_by_index[sat]
+            distance = distance_between_ground_station_satellite(ground_station, satellites_by_name[satellite_name], loop_t)
+            if distance <= max_gsl_length_m:
+                number_of_visible_sats += 1
+                new_visible_sats.append(sat)
+
+        visible_sats = new_visible_sats[:]
+        cnt += step
+
+    if len(visible_sats) == 1:
+        ground_station["next_update"] = loop_t.tt
+        return (satellites_by_index[visible_sats[0]], visible_sats[0])
+
+    return -1
+
+def M_gs_sat_association_criteria_MaxAssociationTime(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, num_of_satellites, satellites_by_index, satellites_by_name, max_gsl_length_m, t):
+    for gs in ground_stations:
+        if t.tt > gs["next_update"] or gs["next_update"] == "":
+            chosen_satellite = last_visible_satellite(gs, ground_station_satellites_in_range_temporary, num_of_satellites, satellites_by_index, satellites_by_name, max_gsl_length_m, t)
+            if chosen_satellite != -1:
+                print "....... Current time = ", t.tt," GS#", gs["gid"], " is associated with SAT#", chosen_satellite[0]," which is named as ", chosen_satellite[1], ". The next uupdate time will be ", gs["next_update"]
+                connectivity_matrix[num_of_satellites+gs["gid"]][chosen_satellite[1]] = 1
+                connectivity_matrix[chosen_satellite[1]][num_of_satellites+gs["gid"]] = 1
+            else:
+                print gs["gid"], -1
+        else:
+            print "....... No updates = ", t.tt
+            continue
+
+    return connectivity_matrix
+
 
 def M_gs_sat_association_criteria_BasedOnDistance(connectivity_matrix, all_gs_satellites_in_range, ground_stations, num_of_satellites, t):
     gsl_snr = [0 for i in range(len(ground_stations))]

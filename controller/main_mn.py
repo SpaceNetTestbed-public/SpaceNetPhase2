@@ -382,7 +382,7 @@ def get_sats_by_name(filename):
     return satellites
 
 def parse_config_file(filepath, filename):
-    configurations = {"simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "inclination":0, "constellation":"starlink", "tle_file":"", "number_of_orbits":0, "number_of_sat_per_orbit":0, "altitude":0, "elevation_angle":0, "experiment":2, "constellation_ip_range":"" , "False_run_archieve_path_foldername":"" ,"Debug":1}
+    configurations = {"simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "inclination":0, "constellation":"starlink", "tle_file":"", "number_of_orbits":0, "number_of_sat_per_orbit":0, "altitude":0, "elevation_angle":0, "experiment":2, "constellation_ip_range":"", "other_constellation_ip_range": "", "association_criteria":"BASED_ON_DISTANCE_ONLY_MININET" ,"exit_gw": "" ,"interDomain_routing":0 , "False_run_archieve_path_foldername":"" ,"Debug":1}
     configFile = open(filepath+"/"+filename, 'r')
     configs = configFile.readlines()
 
@@ -578,16 +578,17 @@ def main():
     start = round(time.time()*1000)
     if main_configurations["Fresh_run"] == False:
         connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time["tt"])
-        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time["tt"], main_configurations)
+        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["association_criteria"], actual_time["tt"], main_configurations)
     elif main_configurations["Fresh_run"] == True:
         connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time)
-        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time, main_configurations)
+        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["association_criteria"], actual_time, main_configurations)
     end = round(time.time()*1000)
     if main_configurations["Debug"] == 1:
         print ".......... Initial Connectivity Matrix for", main_configurations["constellation"], "Constellation is created in", (end-start)/1000, "secs"
 
     gs_statellite_pair = get_gs_sat_pairs(connectivity_matrix, num_of_satellites)
 
+    # print satellites_by_index
     start = round(time.time()*1000)
     if main_configurations["Fresh_run"] == False:
         links_charateristics = calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, actual_time["tt"])
@@ -659,7 +660,7 @@ def main():
         print "..... Phase-6: Compute Ground Stations Routing:"
 
     start = round(time.time()*1000)
-    gs_routing(data_path, gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"])
+    gs_routing(data_path, gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations)
     end = round(time.time()*1000)
 
     if main_configurations["Debug"] == 1:
@@ -707,7 +708,7 @@ def main():
 
         start = round(time.time()*1000)
         new_CMatrix = mininet_add_ISLs(new_CMatrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time_increment)
-        new_CMatrix = mininet_add_GSLs(new_CMatrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_DISTANCE_ONLY_MININET", actual_time_increment, main_configurations)
+        new_CMatrix = mininet_add_GSLs(new_CMatrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["association_criteria"], actual_time_increment, main_configurations)
         end = round(time.time()*1000)
 
         # print " Re calculate the ISL and GSL links took ", end-start, "ms "
