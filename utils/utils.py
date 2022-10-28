@@ -104,7 +104,6 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
         for i in range(len(orbit)):
             sat_index += 1
             satellites_by_index[sat_index] = orbit[i].name.split(" ")[0]
-            # print orbit[i].name.split(" ")[0]
 
 
     return {"sorted satellite in orbits": satellites_sorted_in_orbits,

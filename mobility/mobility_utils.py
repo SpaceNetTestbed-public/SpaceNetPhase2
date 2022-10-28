@@ -114,7 +114,6 @@ def find_nearest_sat_in_adjacent_plane(constellation_planes, sat, key, satellite
 
     return adj_sat
 
-
 def get_differences_in_GSLs_between_iterations(old_list, new_list):
 	differences = []
 	i = 0;
@@ -123,42 +122,6 @@ def get_differences_in_GSLs_between_iterations(old_list, new_list):
 			differences.append((i, o, n))
 		i += 1
 	return differences
-
-def graph_add_ISLs(G, satellites_by_name, actual_sat_number_to_counter, constellation_planes, n_orbits, n_sats_per_orbit, isl_config, t):
-    if isl_config == "SAME_ORBIT_AND_GRID_ON_EDGE_SATELLITES_ONLY":
-        for i in range(n_orbits):
-            for j in range(n_sats_per_orbit):
-                sat = i * n_sats_per_orbit + j
-
-                # Link to the next in the orbit
-                sat_same_orbit = i * n_sats_per_orbit + ((j + 1) % n_sats_per_orbit)
-                G.add_edge(sat, sat_same_orbit, weight=1)
-
-                # Grid for the edge satellites
-                if j % n_sats_per_orbit == 0 or j % (n_sats_per_orbit - 1) == 0:
-                    sat_adjacent_orbit = ((i + 1) % n_orbits) * n_sats_per_orbit + (j % n_sats_per_orbit)
-                    G.add_edge(sat, sat_adjacent_orbit, weight=1)
-
-    if isl_config == "SAME_ORBIT_AND_BASED_ON_DISTANCE_FOR_INTER_ORBIT":
-        for i in range(len(constellation_planes.keys())):
-            cur_key = constellation_planes.keys()[i]
-            for j in range(len(constellation_planes[str(cur_key)])):
-
-                # In the same plane
-                satname, adj_satname = constellation_planes[str(cur_key)][j], constellation_planes[str(cur_key)][(j+1)%len(constellation_planes[str(cur_key)])]
-                sat_index = actual_sat_number_to_counter.index(str(satname))
-                adj_sat_index = actual_sat_number_to_counter.index(str(adj_satname))
-                G.add_edge(sat_index, adj_sat_index, weight=1)
-
-                # In the adjacent planes for the edge sats only.
-                if j == 0 or j == len(constellation_planes[str(cur_key)])-1:
-                    sat_adjacent_orbit = find_nearest_sat_in_adjacent_plane(constellation_planes, str(satname), int(cur_key), satellites_by_name, t)
-                    sat_adjacent_orbit_index1 = actual_sat_number_to_counter.index(str(sat_adjacent_orbit[0]))
-                    sat_adjacent_orbit_index2 = actual_sat_number_to_counter.index(str(sat_adjacent_orbit[1]))
-
-                    G.add_edge(sat_index, sat_adjacent_orbit_index1, weight=1)
-                    G.add_edge(sat_index, sat_adjacent_orbit_index2, weight=1)
-    return G
 
 def find_adjacent_orbit_sat(current_plane, current_sat, adj_plane, satellites_sorted_in_orbits, satellites_by_name, t):
     adj_plane_sats = satellites_sorted_in_orbits[adj_plane]
@@ -490,74 +453,6 @@ def M_gs_sat_association_criteria_BasedOnDistance_alan(connectivity_matrix, all_
             # print "best distance ",gid, chosen_sid, best_distance_m, gsl_latency[gid]
 
     return connectivity_matrix
-
-# def M_gs_sat_association_criteria_MaxAssoTime(ground_station, satellites, tles, simulation_time, step, bestSatPerInterval):
-#
-# 	"""
-# 	Ground station, Satellite selection criteria function based on maximizing
-# 	the association time.
-#
-# 	The GS will associate with a satellite once it appears in Horizon and will
-# 	remain attached to the same satellites until it disappear (no Line of Sight)
-#
-# 	Param:
-# 	- ground_station: The actual ground station to which the best satellite will be identified
-# 	- satellites: List of all satellites in the constellation
-# 	- Tles: Used to get the epoch in the tles files
-# 	- simulation_time: For how long the best satellite should be estimated (in seconds)
-# 	- step: the frequency of calculating satellites in range (in seconds)
-# 	- bestSatPerInterval: The list of all GS and Best satellites at any time
-# 	"""
-# 	satellites_in_range = []
-# 	satellites_timeAvailability = []
-# 	for i in range(0, simulation_time, step):
-# 		date_str = tles["epoch"] + 0.000000115*i*100		#100*0.000000115 corresponds to one second change
-# 		for sid in range(len(satellites)):
-# 			distance_m = distance_m_ground_station_to_satellite(ground_station, satellites[sid], str(tles["epoch"]), str(date_str))
-# 			if distance_m <= max_gsl_length_m:
-# 				satellites_in_range.append((i, sid, distance_m))
-#
-# 	# Out of all the satellites_in_range, find the longest attached satellite for each time step
-#
-# 	for i in range(len(satellites)):
-# 		min_time = 10000000
-#                 max_time = 0
-#                 distance_AtMinTime = 0
-#                 distance_AtMaxTime = 0
-#                 availabilityCount = 0
-#
-# 		for (time_step, sat, distance, elevation) in satellites_in_range:
-# 			if sat == i:
-#                                 availabilityCount += 1
-#                                 if time_step < min_time:
-#                                         min_time = time_step
-#                                         distance_AtMinTime = distance
-#                                 if time_step > max_time:
-#                                         max_time = time_step
-#                                         distance_AtMaxTime = distance
-#
-#                 satellites_timeAvailability.append((i, min_time, max_time, distance_AtMinTime, distance_AtMaxTime, availabilityCount))
-#
-# 	for i in range (0, simulation_time, step):
-#                 satMaxTime = 0
-#                 appearCnt = 0
-#                 distance_AtMin = 0
-#                 distance_AtMax = 0
-#                 bestSat = 0
-#                 for (sat, min_t, max_t, d_AtMin, d_AtMax, avaCnt) in satellites_timeAvailability:
-#                         if i == min_t:
-#                                 if max_t > satMaxTime and (max_t-min_t)/step == avaCnt-1:
-#                                         satMaxTime = max_t
-#                                         appearCnt = avaCnt
-#                                         distance_AtMin = d_AtMin
-#                                         distance_AtMax = d_AtMax
-#                                         bestSat = sat
-#
-#                 bestSatPerInterval.append((ground_station["gid"], i, bestSat, satMaxTime, appearCnt, distance_AtMin, distance_AtMax))
-# 		print ground_station["gid"], i, bestSat, satMaxTime, appearCnt, distance_AtMin, distance_AtMax
-#
-# 	return bestSatPerInterval
-
 
 def calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, t):
     matrix_size = len(satellites_by_index)+len(ground_stations)
