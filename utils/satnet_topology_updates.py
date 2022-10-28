@@ -15,7 +15,7 @@ from routing.constellation_routing import *
 
 def main():
     # 1 - Read configurations
-    main_configurations = parse_config_file_yml(".","../controller/oneweb_config.yml")
+    main_configurations = parse_config_file_yml(".","../controller/starlink_config.yml")
 
     # 2 - Get current time
     ts = load.timescale()
@@ -74,7 +74,7 @@ def main():
             print "..... Time: ", time_utc_inc.utc_strftime()
         start = round(time.time()*1000)
         connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
-        if main_configurations["constellation"]["operator"] = "oneweb":
+        if main_configurations["constellation"]["operator"] == "oneweb":
             connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS_ONEWEB", time_utc_inc)
         else:
             connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", time_utc_inc)

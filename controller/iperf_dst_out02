@@ -1,7 +1,0 @@
-------------------------------------------------------------
-Client connecting to 12.1.66.2, TCP port 5201
-TCP window size: 85.3 KByte (default)
-------------------------------------------------------------
-[  3] local 12.0.77.2 port 44680 connected with 12.1.66.2 port 5201
-[ ID] Interval       Transfer     Bandwidth
-[  3]  0.0- 1.0 sec  1.00 MBytes  8.39 Mbits/sec
