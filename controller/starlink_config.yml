@@ -33,11 +33,11 @@ application:
     destination: gs22
     duration: 30
     congestion_control: cubic
-    result_out: ping_27Oct
+    result_out: ../results/starlink/ping_27Oct
     background_traffic: no
     tcpdump: no
 
 data_n_results:
     connectivity_matrix: ../utils/connectivity_matrix/starlink/
     routing: ../utils/routing/starlink/
-    simulation_results: ../results
+    simulation_results: ../results/starlink

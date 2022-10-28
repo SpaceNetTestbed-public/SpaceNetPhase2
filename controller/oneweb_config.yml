@@ -33,11 +33,11 @@ application:
     destination: gs21
     duration: 30
     congestion_control: cubic
-    result_out: ping_OneWeb_28-1Oct
+    result_out: ../results/oneweb/ping_OneWeb_28-1Oct
     background_traffic: no
     tcpdump: no
 
 data_n_results:
     connectivity_matrix: ../utils/connectivity_matrix/oneweb/
     routing: ../utils/routing/oneweb/
-    simulation_results: ../results_oneweb
+    simulation_results: ../results/oneweb

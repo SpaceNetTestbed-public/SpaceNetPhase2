@@ -15,7 +15,7 @@ from routing.constellation_routing import *
 
 def main():
     # 1 - Read configurations
-    main_configurations = parse_config_file_yml(".","../controller/starlink_config.yml")
+    main_configurations = parse_config_file_yml(".","../controller/oneweb_config.yml")
 
     # 2 - Get current time
     ts = load.timescale()
