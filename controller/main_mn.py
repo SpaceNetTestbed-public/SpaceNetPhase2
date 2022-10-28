@@ -41,6 +41,7 @@ from mobility.read_gs import *
 from mininet_infra.create_mininet_topology import *
 from routing.routing_utils import *
 from routing.constellation_routing import *
+from utils.utils import *
 
 DEBUG = 1
 
@@ -251,8 +252,10 @@ def prepare_routing_config_commands(topology, data_path, initial_routes, links, 
     start = round(time.time()*1000)
     ipRouteCMD = topology.create_static_routes_batch_parallel(initial_routes, links, list_of_Intf_IPs, satellites_by_index, num_of_threads)
     logg = open(data_path+"/stat_r.sh", "w")
-    for c in ipRouteCMD:
-        logg.write(c)
+    for rcmd in ipRouteCMD:
+        for c in rcmd:
+            logg.write(c)
+
     logg.close()
     end = round(time.time()*1000)
     # if DEBUG == 1:
@@ -350,7 +353,7 @@ def get_time(filename):
     year, month, day, hour, minute, newscs = used_time.split(",")
     ts = load.timescale()
     t = ts.utc(int(year), int(month), int(day), int(hour), int(minute), float(newscs))
-    print t.tt
+    # print t.tt
 
     return {"tt": t,
             "year": year,
@@ -381,30 +384,163 @@ def get_sats_by_name(filename):
 
     return satellites
 
-def parse_config_file(filepath, filename):
-    configurations = {"simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "inclination":0, "constellation":"starlink", "tle_file":"", "number_of_orbits":0, "number_of_sat_per_orbit":0, "altitude":0, "elevation_angle":0, "experiment":2, "constellation_ip_range":"", "other_constellation_ip_range": "", "association_criteria":"BASED_ON_DISTANCE_ONLY_MININET" ,"exit_gw": "" ,"interDomain_routing":0 , "False_run_archieve_path_foldername":"" ,"Debug":1}
-    configFile = open(filepath+"/"+filename, 'r')
-    configs = configFile.readlines()
-
-    for config in configs:
-        config_parameters = config.split("=")
-        if config_parameters[1].strip().isdigit():
-            configurations[str(config_parameters[0])]=int(config_parameters[1].strip())
-        elif config_parameters[1].strip() == "False" or config_parameters[1].strip() == "True":
-            if config_parameters[1].strip() == "False":
-                configurations[str(config_parameters[0])] = False
-            elif config_parameters[1].strip() == "True":
-                configurations[str(config_parameters[0])] = True
-        else:
-            configurations[str(config_parameters[0])]=config_parameters[1].strip()
-
-    return configurations
-
 def main():
+    N                               = 3
+    ts                              = load.timescale()
+    main_configurations             = parse_config_file_yml(".","starlink_config.yml")
+    path_of_recent_TLE              = get_recent_TLEs_using_datetime("../utils/", main_configurations["simulation"]["start_time"], main_configurations["constellation"]["operator"])
+    satellites                      = load.tle_file(path_of_recent_TLE)
+    satellites_by_name              = {sat.name.split(" ")[0]: sat for sat in satellites}
+    satellites_by_index             = {}
+    orbital_data                    = get_orbital_planes_classifications(path_of_recent_TLE, main_configurations["constellation"]["operator"], main_configurations["constellation"]["shell1"]["orbits"], main_configurations["constellation"]["shell1"]["sat_per_orbit"], main_configurations["constellation"]["shell1"]["inclination"])
+
+    arranged_sats                   = arrange_satellites("../utils/", orbital_data, satellites_by_name, main_configurations, main_configurations["simulation"]["start_time"] ,satellites_by_index, path_of_recent_TLE.split("_")[2])
+    satellites_by_index             = arranged_sats["satellites by index"]
+    satellites_sorted_in_orbits     = arranged_sats["sorted satellite in orbits"]
+
+    ground_stations                 = read_gs(main_configurations["ground_stations"]["gs_file"])
+    num_of_satellites               = len(orbital_data)
+    num_of_ground_stations          = len(ground_stations)
+    increments                      = 0
+
+    if main_configurations["simulation"]["debug"] == 1:
+        print ".......... total number of satellites = ", num_of_satellites
+        print ".......... total number of ground_stations = ", num_of_ground_stations
+
+    if main_configurations["simulation"]["debug"] == 1:
+        print "------------------------------------------------------------------"
+
+    sim_timeCount = main_configurations["simulation"]["length"]
+    while sim_timeCount >= 1:
+        loopStart = round(time.time()*1000)
+        increments += main_configurations["simulation"]["step"]
+        year,month,day,hour,minute,second = main_configurations["simulation"]["start_time"].split(",")[0], main_configurations["simulation"]["start_time"].split(",")[1], main_configurations["simulation"]["start_time"].split(",")[2], main_configurations["simulation"]["start_time"].split(",")[3], main_configurations["simulation"]["start_time"].split(",")[4], main_configurations["simulation"]["start_time"].split(",")[5]
+
+        time_utc_inc    = ts.utc(int(year), int(month), int(day), int(hour), int(minute), float(second)+increments)
+        time_timestamp  = convert_time_utc_to_unix(time_utc_inc)
+        if get_recent_TLEs_using_timestamp("../utils/", time_timestamp, main_configurations["constellation"]["operator"]) != path_of_recent_TLE:
+            path_of_recent_TLE              = get_recent_TLEs_using_timestamp("../utils/", time_timestamp, main_configurations["constellation"]["operator"])
+            reloaded_vars                   = reload_tles(path_of_recent_TLE)
+            satellites_sorted_in_orbits     = reloaded_vars["satellites_sorted_in_orbits"]
+            satellites_by_name              = reloaded_vars["satellites_by_name"]
+            satellites_by_index             = reloaded_vars["satellites_by_index"]
+            num_of_satellites               = reloaded_vars["num_of_satellites"]
+
+        conn_mat_size           = num_of_satellites + num_of_ground_stations
+        satnat_topology_change  = parse_connectivity_matrix_n_charateristics(time_utc_inc, conn_mat_size, main_configurations["data_n_results"]["connectivity_matrix"])
+
+        if satnat_topology_change == -1:
+            print ("[Error] Check the parse_connectivity_matrix_n_charateristics function")
+            exit()
+
+        # Only for the first run of the simulator
+        if increments == main_configurations["simulation"]["step"]:
+            gs_statellite_pair      = get_gs_sat_pairs(satnat_topology_change["connectivity_matrix"], num_of_satellites)
+            available_ips           = generate_ips_for_constellation(main_configurations["constellation"]["routing"]["ip_range"])
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print "------------------------------------------------------------------"
+                print "..... Pre-compute Routing Tables Phase:"
+
+            start = round(time.time()*1000)
+            TopologyRoutes          = parse_topology_routes(main_configurations["data_n_results"]["routing"], num_of_satellites, time_utc_inc)
+            end  = round(time.time()*1000)
+
+            if TopologyRoutes == -1:
+                print ("[Error] Check the parse_topology_routes function")
+                exit()
+
+            if main_configurations["simulation"]["debug"] == 1:
+                in_sec = (end-start)/1000.0
+                print ".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+                print ".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(TopologyRoutes["All_PreConfigured_routes"]), "routes"
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print "------------------------------------------------------------------"
+                print "..... Configure Mininet Phase:"
+
+            topology                = sat_network(N=N)
+            topg                    = topology.create_sat_network(satellites=satellites_by_index, ground_stations=ground_stations, connectivity_matrix=satnat_topology_change["connectivity_matrix"], link_throughput=satnat_topology_change["links_capacity"], link_latency=satnat_topology_change["links_latency"], Tmode=1, physical_gs_index=[], physical_sats_index=[])
+            net                     = Mininet(topo = topology, link=TCLink, autoSetMacs = True, controller=OVSController)
+            net.start()
+            list_of_Intf_IPs        = topology.initial_ipv4_assignment_for_interfaces_optimised(main_configurations["data_n_results"]["simulation_results"], net, available_ips, [])
+            if main_configurations["simulation"]["debug"] == 1:
+                print "------------------------------------------------------------------"
+                print "..... Generate IP Route Linux Commands Phase: "
+
+            links_hash              = {}
+            for link in topg["isl_gls_links"]:
+                endpoint1, endpoint2         = link.split(":")
+                endpoints                    = str(endpoint1.split("-")[0])+"_"+str(endpoint2.split("-")[0])
+                links_hash[str(endpoints)]   = []
+                links_hash[str(endpoints)].append(link)
+
+            start = round(time.time()*1000)
+            prepare_routing_config_commands(topology, main_configurations["data_n_results"]["simulation_results"], TopologyRoutes["All_PreConfigured_routes"], links_hash, list_of_Intf_IPs, satellites_by_index, 20);
+            end  = round(time.time()*1000)
+            if main_configurations["simulation"]["debug"] == 1:
+                print ".......... Generateing the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print "------------------------------------------------------------------"
+                print "..... Compute Ground Stations Routing Phase:"
+
+            start = round(time.time()*1000)
+            gs_routing(main_configurations["data_n_results"]["simulation_results"], gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations)
+            end = round(time.time()*1000)
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print ".......... Ground Stations Routes for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print "------------------------------------------------------------------"
+                print "..... Deploy the IP Route Commands on Mininet VMs Phase:"
+
+            start = round(time.time()*1000)
+            topology.startRoutingConfigV2(main_configurations["data_n_results"]["simulation_results"], net, satellites_by_index, ground_stations, topg["management_interface"])
+            end = round(time.time()*1000)
+            if main_configurations["simulation"]["debug"] == 1:
+                print "......... Deploy the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+
+            # net = run_application(main_configurations["data_n_results"]["simulation_results"], net, main_configurations, list_of_Intf_IPs)
+            CLI(net)
+            net.stop()
+            # exit()
+
+        else:
+            topology_changes                = check_changes_in_topology(old_connectivity_matrix, satnat_topology_change["connectivity_matrix"])
+            latency_changes                 = check_changes_in_link_charateristics(old_links_latency, satnat_topology_change["links_latency"])
+            capacity_changes                = check_changes_in_link_charateristics(old_links_capacity, satnat_topology_change["links_capacity"])
+            links_charateristics_changes    = merge_link_link_charateristics(latency_changes, capacity_changes)
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print ".......... Number of GSL link changes = ", len(topology_changes)
+                print ".......... Number of changes in link latency = ", len(latency_changes)
+                print ".......... Number of changed in link capacity = ", len(capacity_changes)
+                print ".......... Total link charateristics changes = ", len(links_charateristics_changes[0]), len(links_charateristics_changes[1])
+
+            if len(topology_changes) > 0 and len(topology_changes) < 100:
+                lightweight_routing(main_configurations["data_n_results"]["simulation_results"], topology_changes, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], time_utc_inc)
+                net = apply_topology_updates_to_mininet(main_configurations["data_n_results"]["simulation_results"], net, topology_changes, num_of_satellites, time_utc_inc)
+                net = apply_link_updates_to_mininet(net, links_charateristics_changes[0], links_charateristics_changes[1], num_of_satellites, time_utc_inc)
+
+        old_connectivity_matrix = satnat_topology_change["connectivity_matrix"][:]
+        old_links_latency       = satnat_topology_change["links_latency"][:]
+        old_links_capacity      = satnat_topology_change["links_capacity"][:]
+
+        loopEnd = round(time.time()*1000)
+        if main_configurations["simulation"]["debug"] == 1:
+            print ".......... One Simulation Loop for "+ time_utc_inc.utc_strftime() +" took ", (loopEnd-loopStart)/1000, " secs"
+
+        sim_timeCount -= 1
+
+    exit()
+
+
 
     # experiment 2 => Normal run with Starlink constellation and 100 Groud station read from ground_station.txt file
     # experiment 1 => Focusing on Alan's calibration experiment
-    main_configurations = parse_config_file(".","starlink_config.txt")
+    main_configurations = parse_config_file(".","oneweb_config.txt")
     number_of_orbits = 0
     print main_configurations
     if main_configurations["experiment"] == 1:
@@ -449,33 +585,35 @@ def main():
 
     actual_time = 0
     loggedTime = ""
-    # data_timestamp = "2022,07,06,12,29,42.706750" #"2022,03,16,11,29,36.124013"
     data_path = main_configurations["False_run_archieve_path_foldername"]
 
     N = 3
 
     if main_configurations["Fresh_run"] == True:
         ts = load.timescale()
-        actual_time = ts.now()
+        # actual_time = ts.now()
+        # dt, leap_second = actual_time.utc_datetime_and_leap_second()
+        # newscs = ((str(dt).split(" ")[1]).split(":")[2]).split("+")[0]
+        # date, timeN, zone = actual_time.utc_strftime().split(" ")
+        # year, month, day = date.split("-")
+        # hour, minute, second = timeN.split(":")
+        # loggedTime = str(year)+","+str(month)+","+str(day)+","+str(hour)+","+str(minute)+","+str(newscs)
 
-        dt, leap_second = actual_time.utc_datetime_and_leap_second()
-        newscs = ((str(dt).split(" ")[1]).split(":")[2]).split("+")[0]
-        date, timeN, zone = actual_time.utc_strftime().split(" ")
-        year, month, day = date.split("-")
-        hour, minute, second = timeN.split(":")
-        loggedTime = str(year)+","+str(month)+","+str(day)+","+str(hour)+","+str(minute)+","+str(newscs)
-        if main_configurations["Debug"] == 1:
+        y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
+        time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
+        loggedTime = str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(s)
+        time_timestamp = utils.convert_time_utc_to_unix(time_utc)
+
+        if main_configurations["simulation"]["debug"] == 1:
             print " The Actual real time for the simulation is ", loggedTime
 
-        data_path = "../data_gen/archieved_data_"+str(loggedTime)
+        data_path = "../data_gen/"+main_configurations["constellation"]+"/archieved_data_"+str(loggedTime)
         os.mkdir(data_path)
 
-
-        tle_url = main_configurations["tle_file"]
+        tle_path = utils.get_recent_TLEs(time_timestamp, main_configurations["constellation"])
         number_of_orbits = main_configurations["number_of_orbits"]
 
-        tle_file = wget.download(tle_url, out = data_path)
-        satellites = load.tle_file(main_configurations["tle_file"])
+        satellites = load.tle_file(tle_path)
 
         satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
         satellites_by_index = {}
@@ -485,33 +623,33 @@ def main():
             satellites_phys = []
             for i in range(number_of_hw_sats):
                 satellites_phys.append(satellites_by_name.items()[i])
-                if main_configurations["Debug"]==1:
+                if main_configurations["simulation"]["debug"]==1:
                     print "Satellite ", satellites_by_name.items()[i], " is a physical sateellite "
 
-        orbital_data = get_orbital_planes_classifications(data_path+"/"+main_configurations["constellation"]+".txt", main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
+        orbital_data = get_orbital_planes_classifications(tle_path, main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
 
-    elif main_configurations["Fresh_run"] == False:
-        actual_time = get_time(data_path+"/time_log.txt")
-        if main_configurations["Debug"]==1:
-            print " The Actual real time for the simulation is ", actual_time["tt"].utc_strftime()
-
-
-        satellites = load.tle_file(main_configurations["tle_file"])
-        number_of_orbits = main_configurations["number_of_orbits"]
-
-        satellites_by_name_from_file = get_sats_by_name(data_path+"/satellites_by_name_log.txt")
-        satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites if sat.name.split(" ")[0] in satellites_by_name_from_file}
-        satellites_by_index = {}
-
-        if main_configurations["mode"] == 2:
-            satellites_phys_index = []
-            satellites_phys = []
-            for i in range(number_of_hw_sats):
-                satellites_phys.append(satellites_by_name.items()[i])
-                if main_configurations["Debug"]==1:
-                    print "Satellite ", satellites_by_name.items()[i], " is a physical sateellite "
-
-        orbital_data = get_orbital_planes_classifications(data_path+"/"+main_configurations["constellation"]+".txt", main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
+    # elif main_configurations["Fresh_run"] == False:
+    #     actual_time = get_time(data_path+"/time_log.txt")
+    #     if main_configurations["simulation"]["debug"]==1:
+    #         print " The Actual real time for the simulation is ", actual_time["tt"].utc_strftime()
+    #
+    #
+    #     satellites = load.tle_file(main_configurations["tle_file"])
+    #     number_of_orbits = main_configurations["number_of_orbits"]
+    #
+    #     satellites_by_name_from_file = get_sats_by_name(data_path+"/satellites_by_name_log.txt")
+    #     satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites if sat.name.split(" ")[0] in satellites_by_name_from_file}
+    #     satellites_by_index = {}
+    #
+    #     if main_configurations["mode"] == 2:
+    #         satellites_phys_index = []
+    #         satellites_phys = []
+    #         for i in range(number_of_hw_sats):
+    #             satellites_phys.append(satellites_by_name.items()[i])
+    #             if main_configurations["simulation"]["debug"]==1:
+    #                 print "Satellite ", satellites_by_name.items()[i], " is a physical sateellite "
+    #
+    #     orbital_data = get_orbital_planes_classifications(data_path+"/"+main_configurations["constellation"]+".txt", main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
 
 ############################################################################################################################################################
 ############################################################################################################################################################
@@ -520,7 +658,7 @@ def main():
 # [[Orbital Data]] Sort the satellites in the orbit. We need that in order to know the adjacent satellites
 # in the same orbit.
     f = open(data_path+"/sorted_satellites_within_orbit.txt", "a")
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "..... Phase-1: Constellation Orbits:"
     satellites_sorted_in_orbits = []        #carry satellites names according to STARLINK naming conversion (list of lists)
     for i in range(number_of_orbits):
@@ -531,7 +669,7 @@ def main():
             if i == int(orbital_data[str(data)][2]):
                 satellites_in_orbit.append(satellites_by_name[str(data.split(" ")[0])])
                 cn +=1
-        if main_configurations["Debug"]==1:
+        if main_configurations["simulation"]["debug"]==1:
             print ".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites"
 
         if main_configurations["Fresh_run"] == False:
@@ -541,7 +679,7 @@ def main():
             sorted = sort_satellites_in_orbit(satellites_in_orbit, actual_time)
             satellites_sorted_in_orbits.append(sorted)
 
-        if main_configurations["Debug"]==1:
+        if main_configurations["simulation"]["debug"]==1:
             for s in sorted:
                 write_this = str(i)+" "+str(s.name)+" "+str(orbital_data[str(s.name)])+"\n"
                 f.write(write_this)
@@ -557,20 +695,20 @@ def main():
                 for phys in satellites_phys:
                     if orbit[i].name.split(" ")[0] in phys[0]:
                         satellites_phys_index.append(sat_index)
-                        if main_configurations["Debug"] == 1:
+                        if main_configurations["simulation"]["debug"] == 1:
                             print "Satellite ", orbit[i].name.split(" ")[0], " is a physical satellite and its index = ", sat_index
 ####
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print ".......... total number of satellites = ", num_of_satellites
         print ".......... total number of ground_stations = ", num_of_ground_stations
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "------------------------------------------------------------------"
 # [[Build Topology and Links]] Build the network topology, specifically, the Inter-Satellites-Links (mininet_add_ISLs) and GroundStation-Satellites-Links (mininet_add_GSLs)
 # Compute links charateristics in terms of latency, bandwidth and snr
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "..... Phase-2: Build Topology"
     conn_mat_size = num_of_satellites + num_of_ground_stations
     connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
@@ -583,7 +721,7 @@ def main():
         connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", actual_time)
         connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["association_criteria"], actual_time, main_configurations)
     end = round(time.time()*1000)
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print ".......... Initial Connectivity Matrix for", main_configurations["constellation"], "Constellation is created in", (end-start)/1000, "secs"
 
     gs_statellite_pair = get_gs_sat_pairs(connectivity_matrix, num_of_satellites)
@@ -596,7 +734,7 @@ def main():
         links_charateristics = calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, actual_time)
     end = round(time.time()*1000)
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print ".......... GSL and ISL Links Characteristics for", main_configurations["constellation"], "Constellation is calculated in", (end-start)/1000, "secs"
 
     available_ips = generate_ips_for_constellation(main_configurations["constellation_ip_range"])
@@ -606,7 +744,7 @@ def main():
 # [[Routing and Mininet]] Compute the all the routes to all nodes in the topology. We need these routes before we go into mininet to do initial routing table configuration
 # for all nodes in Mininet. We then pass these info to Mininet to create the topology there
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "------------------------------------------------------------------"
         print "..... Phase-3: Pre-compute Routing Tables:"
 
@@ -614,12 +752,12 @@ def main():
     TopologyRoutes = get_topology_routes(main_configurations["Fresh_run"], data_path, num_of_satellites, satellites_by_index, ground_stations, connectivity_matrix, links_charateristics)
     end = round(time.time()*1000)
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         in_sec = (end-start)/1000.0
         print ".......... Routing Pre-computation for", main_configurations["constellation"], "Constellation is completed in", (end-start)/1000, "secs"
         print ".......... Total Number of routes for", main_configurations["constellation"], "Constellation is", len(TopologyRoutes["All_PreConfigured_routes"]), "routes"
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "------------------------------------------------------------------"
         print "..... Phase-4: Configure Mininet:"
 
@@ -637,7 +775,7 @@ def main():
     if main_configurations["Fresh_run"] == True:
         dump_ALL(data_path, loggedTime, topg["isl_gls_links"], topg["management_interface"], satellites_by_index, satellites_by_name, TopologyRoutes["All_PreConfigured_routes"])
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "------------------------------------------------------------------"
         print "..... Phase-5: Generate IP Route Linux Commands:"
 
@@ -652,10 +790,10 @@ def main():
     prepare_routing_config_commands(topology, data_path, TopologyRoutes["All_PreConfigured_routes"], links_hash, list_of_Intf_IPs, satellites_by_index, 20);
     end = round(time.time()*1000)
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print ".......... Generateing the IP Route commands for", main_configurations["constellation"], "Constellation is completed in", (end-start)/1000, "secs"
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "------------------------------------------------------------------"
         print "..... Phase-6: Compute Ground Stations Routing:"
 
@@ -663,47 +801,58 @@ def main():
     gs_routing(data_path, gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations)
     end = round(time.time()*1000)
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print ".......... Ground Stations Routes for", main_configurations["constellation"], "Constellation is completed in", (end-start)/1000, "secs"
 
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "------------------------------------------------------------------"
         print "..... Phase-7: Deploy the IP Route Commands on Mininet VMs:"
 
     start = round(time.time()*1000)
     topology.startRoutingConfigV2(data_path,net, satellites_by_index, ground_stations, topg["management_interface"])
     end = round(time.time()*1000)
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "......... Deploy the IP Route commands for", main_configurations["constellation"], "Constellation is completed in", (end-start)/1000, "secs"
 ####
     # sc = data_path+"/stat_r.sh"
     # CLI(net, script=sc)
-    CLI(net)
-    net.stop()
+    # CLI(net)
+    # net.stop()
     # dump_ALL(data_path, loggedTime, topg["isl_gls_links"], topg["management_interface"], satellites_by_index, satellites_by_name, TopologyRoutes["All_PreConfigured_routes"], GS_SAT_Table)
-    exit()
+    # exit()
 ####
 #
 ####
 # [[Iterative Simulation]] Now we compute the changes in the topology ever Step_secs and store that.
 #
-    addthis = 0
+    sLength_in_seconds = main_configurations["simulation"]["length"]
+    sStep_in_seconds = main_configurations["simulation"]["step"]
+
+    if main_configurations["simulation"]["debug"] == 1:
+        print "------------------------------------------------------------------"
+        print "..... Phase-8: Generate Routing files for the Simulation Loop: "
+
+    if main_configurations["simulation"]["debug"] == 1:
+        print "......... Simulation Length for ", main_configurations["constellation"], "Constellation is ", main_configurations["simulation"]["length"], "secs and the Simulation Step is ", main_configurations["simulation"]["step"], " secs"
+
+    cumulativeStep = 0
     links_updated = topg["isl_gls_links"][:]
     last_CMatrix = []
     updates_files_name = []
-    while SimulationTime_secs > 0:
-        start1 = round(time.time()*1000)
-        SimulationTime_secs -= Step_secs
-        addthis += Step_secs
 
-        if FreshRun == True:
+    while sLength_in_seconds > 0:
+        loopStart = round(time.time()*1000)
+        sLength_in_seconds -= sStep_in_seconds
+        cumulativeStep += sStep_in_seconds
+
+        if main_configurations["Fresh_run"] == True:
             actual_time = get_time(data_path+"/time_log.txt")
 
         ts = load.timescale()
-        actual_time_increment = ts.utc(int(actual_time["year"]), int(actual_time["month"]), int(actual_time["day"]), int(actual_time["hour"]), int(actual_time["minutes"]), float(actual_time["newscs"])+addthis)
-        print "----------------------", actual_time_increment.utc_strftime(), "----------------------"
+        actual_time_increment = ts.utc(int(actual_time["year"]), int(actual_time["month"]), int(actual_time["day"]), int(actual_time["hour"]), int(actual_time["minutes"]), float(actual_time["newscs"])+cumulativeStep)
+        if main_configurations["simulation"]["debug"] == 1:
+            print "......... Time: ", actual_time_increment.utc_strftime()
 
-        new_GS_SAT_Table = [[] for i in range(num_of_satellites)]
         new_CMatrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
 
         start = round(time.time()*1000)
@@ -711,19 +860,23 @@ def main():
         new_CMatrix = mininet_add_GSLs(new_CMatrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["association_criteria"], actual_time_increment, main_configurations)
         end = round(time.time()*1000)
 
-        # print " Re calculate the ISL and GSL links took ", end-start, "ms "
+        if main_configurations["simulation"]["debug"] == 1:
+            print ".......... Recomputing the GSL links took ", (end-start)/1000, " secs"
 
         if len(last_CMatrix) > 0:
             route_changes = check_changes_in_routes(last_CMatrix, new_CMatrix)
+            if main_configurations["simulation"]["debug"] == 1:
+                print ".......... Number of GSL link changes = ", len(route_changes)
 
-            # print " at ", actual_time_increment.utc_strftime(), "there are ", len(route_changes), " route changes"
             updates_files_name.append(str(actual_time_increment.utc_strftime())+"_.txt")
             if len(route_changes) < 400:
                 lightweight_routing(data_path, route_changes, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], actual_time_increment)
                 # we need to update links_updated
         last_CMatrix = new_CMatrix[:]
-        end1 = round(time.time()*1000)
-        # print " Route update iteration took  ", (end1-start1), "ms "
+        loopEnd = round(time.time()*1000)
+        if main_configurations["simulation"]["debug"] == 1:
+            print ".......... One Simulation Loop took ", (loopEnd-loopStart)/1000, " secs"
+
     CLI(net)
     net.stop()
     exit()

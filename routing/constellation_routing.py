@@ -99,7 +99,8 @@ def initial_routing_v2(satellites, ground_stations, connectivity_matrix, latency
     for i in range(len(connectivity_matrix)):
         for j in range(len(connectivity_matrix[i])):
             if connectivity_matrix[i][j] == 1:
-                mega_constellation_graph.add_edge(i, j, weight=latency[i][j])
+                # print i,j
+                mega_constellation_graph.add_edge(i, j, weight=1) #latency[i][j] - starlink, 1 - hopcount oneweb
 
     static_routing_list_args = []
     # print "number of egdes ", len(mega_constellation_graph.edges())
@@ -107,6 +108,7 @@ def initial_routing_v2(satellites, ground_stations, connectivity_matrix, latency
         for q in range(p, len(satellites)):#+len(ground_stations)
             static_routing_list_args.append((mega_constellation_graph, p, q))
 
+    # print mega_constellation_graph.edges.data()
     pool = Pool(20)
     static_routes = pool.map(static_routing_worker, static_routing_list_args)
     pool.close()
@@ -195,6 +197,7 @@ def get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satelli
     next_hop_node   = ""
     dest_node       = ""
     last_hop_node   = ""
+    link            = ""
 
     if len(current_route) > 2:
         src_node, next_hop_node, dest_node, last_hop_node = current_route[0], current_route[1], current_route[len(current_route)-1], current_route[len(current_route)-2]
@@ -449,7 +452,7 @@ def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, 
     for gs_sat in gs_statellite_pair:
         gs_number = int(gs_sat[1])%num_of_satellites
 
-        key = str("gs"+str(gs_number)+"-eth1")
+        key = str("gs"+str(gs_number)+"-eth0")
         # print key
         if list_of_Intf_IPs.get(key) is None:
             print "error -- no ip for this ground station", gs_number
@@ -468,10 +471,10 @@ def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, 
                 #     print parameters
                 if len(parameters) > 0:
                     update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(gs_network_address)+"/28 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
-                    if main_configurations["interDomain_routing"] == 1 and "gs"+str(gs_number) == main_configurations["exit_gw"]:
-                        update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(main_configurations["other_constellation_ip_range"])+"/20 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
+                    if main_configurations["constellation"]["routing"]["interDomain_routing"] == 1 and "gs"+str(gs_number) == main_configurations["constellation"]["routing"]["border_gateway"]:
+                        update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(main_configurations["constellation"]["routing"]["other_constellation_ip_range"])+"/20 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
                 else:
-                    print route_to_sat_GW
+                    print "-----> ", route_to_sat_GW
 
     if len(update_gsl_routing_cmd) > 0:
         for update in update_gsl_routing_cmd:
@@ -502,7 +505,7 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
     allchanges_log = open(data_path+"/allchanges_log_"+str(t_time.utc_strftime())+"_.txt", "a")
     for change in route_changes:
         start = round(time.time()*1000)
-        print "the updated route --> ", change
+        # print "the updated route --> ", change
         allchanges_log.write(str(change[0])+","+str(change[1])+","+str(change[2])+","+str(change[3])+"\n")
 
         # #####
@@ -578,19 +581,19 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
         cmdd =  'chmod +x "'+cmd_path+'"'+'/*.sh'
         os.system(cmdd)
         end = round(time.time()*1000)
-        print "writing the routes update to file takes --- ", end-start, "ms "
+        # print "writing the routes update to file takes --- ", end-start, "ms "
 
         updates_log.close()
         allchanges_log.close()
 
-    print gsl_ch, isl_ch
+    # print gsl_ch, isl_ch
 
-def check_changes_in_routes(last, new):
+def check_changes_in_topology(last, new):
     changes = []
     for i in range(len(new)):
         for j in range(len(new[i])):
             if new[i][j] != last[i][j]:
                 changes.append((i, j, last[i][j], new[i][j]))
-                print i,j, last[i][j], new[i][j]
+                # print i,j, last[i][j], new[i][j]
 
     return changes

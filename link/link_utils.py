@@ -113,6 +113,8 @@ def calc_gsl_snr(satellite, ground_station, t, distance, direction):
     if direction == "uplink":
         rss_dBm = ground_station_tx_power + ground_station_transmit_attenna_gain + 10 - 2 - fspl - polarization_loss - misalignment_attenuation_losses - weather_attenuation_ul - 1.0;
         rss_watt = pow(10,((rss_dBm - 30)/10));
+        # snr = pow(10,(snr_db/10))
+        # return snr
 
     noise_watt = 200 * 1.38064852 * pow(10, -23) * 250*pow(10, 6);        #ktB channnel_bandwidth_downlink
     # print fspl, rss_dBm, rss_watt, noise_watt

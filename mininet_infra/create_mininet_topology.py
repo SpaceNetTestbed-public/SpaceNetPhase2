@@ -38,12 +38,14 @@ def static_routes_batch_worker(args):
 
 
     commands = ""
+    commands_list = []
     for route in routes_chunk:
         parameters = get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satellites_by_index)
         if len(parameters) > 0:
-            commands += str(parameters[0])+" ip route add "+str(parameters[1])+" via "+str(parameters[2].split("/")[0])+" dev "+str(parameters[3])+" & \n"+str(parameters[4])+" ip route add "+str(parameters[5])+" via "+str(parameters[6].split("/")[0])+" dev "+str(parameters[7])+" & \n"
-                
-    return commands
+            commands = str(parameters[0])+" ip route add "+str(parameters[1])+" via "+str(parameters[2].split("/")[0])+" dev "+str(parameters[3])+" & \n"+str(parameters[4])+" ip route add "+str(parameters[5])+" via "+str(parameters[6].split("/")[0])+" dev "+str(parameters[7])+" & \n"
+            commands_list.append(commands)
+
+    return commands_list
 
 class LinuxRouter( Node ):	# from the Mininet library
     "A Node with IP forwarding enabled."
@@ -119,8 +121,8 @@ class sat_network(Topo):
 
             if i not in physical_gs_index:
                 gs_name = self.addHost('gs'+str(i))
-                gs_name = self.addHost('gs'+str(i), ip="172.16."+str(ip_control_intf_oct3)+"."+str(ip_control_intf_oct4)+"/16")
-                self.addLink(gs_name, s1, cls=TCLink)
+                # gs_name = self.addHost('gs'+str(i), ip="172.16."+str(ip_control_intf_oct3)+"."+str(ip_control_intf_oct4)+"/16")
+                # self.addLink(gs_name, s1, cls=TCLink)
                 # mgnt_intf.append({"node":'gs'+str(i), "mgnt_ip": "172.16."+str(ip_control_intf_oct3)+"."+str(ip_control_intf_oct4)})
                 gs_list.append(gs_name)
 
@@ -138,6 +140,7 @@ class sat_network(Topo):
                         # print lt#delay=str(lt)+'ms'
                         self.addLink(sat_list[i], sat_list[j], intfname1 = 'sat'+str(i)+'-eth'+str(sat_intf_count[i]), inftname2 = 'sat'+str(j)+'-eth'+str(sat_intf_count[j]), cls=TCLink, delay=str(0.005)+'ms', bw=link_throughput[i][j])
                         links.append('sat'+str(i)+'-eth'+str(sat_intf_count[i])+":"+'sat'+str(j)+'-eth'+str(sat_intf_count[j]))
+                        # print 'sat'+str(i)+'-eth'+str(sat_intf_count[i])+":"+'sat'+str(j)+'-eth'+str(sat_intf_count[j])
 
                     if i in physical_sats_index and j not in physical_sats_index:
                         self.addLink(sat_list[j], s1, cls=TCLink, delay=str(link_latency[i][j])+'ms', bw=link_throughput[i][j])
@@ -277,9 +280,9 @@ class sat_network(Topo):
                             #print "-- Set IP address for "+str(intf2)+" : "+str(oct1)+"."+str(oct2)+"."+str(oct3)+"."+str(int(oct4)+2)+"/28"
                             # Assign the default gw to the ground stations
                             if "gs" in node.name:
-                                debug("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth1", intf2.IP())
+                                debug("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth0", intf2.IP())
                                 # print "route add default gw "+str(intf.link.intf1.IP())+" dev "+node.name+"-eth1", intf.link.intf2.IP()
-                                node.cmd("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth1");
+                                node.cmd("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth0");
                         else:
                             print "[Create Sat Network -- GSL] No Available IPs to assign"
                             exit()
@@ -311,12 +314,12 @@ class sat_network(Topo):
                         list_of_Intf_IPs.append({"Interface": str(intf1), "IP": str(intf1.IP())+"/28"})
                         list_of_Intf_IPs.append({"Interface": str(intf2), "IP": str(intf2.IP())+"/28"})
 
-                        if "gs" in str(intf1) and "eth1" in str(intf1):
+                        if "gs" in str(intf1) and "eth0" in str(intf1):
                             print "route add default gw "+str(intf2.IP())+" dev "+str(intf1)+"---"+str(intf1).split("-")[0]
                             gsNode = net.getNodeByName(str(intf1).split("-")[0])
                             gsNode.cmd("route add default gw "+str(intf2.IP())+" dev "+str(intf1));
 
-                        if "gs" in str(intf2) and "eth1" in str(intf2):
+                        if "gs" in str(intf2) and "eth0" in str(intf2):
                             print "route add default gw "+str(intf1.IP())+" dev "+str(intf2)+"----"+str(intf2).split("-")[0]
                             gsNode = net.getNodeByName(str(intf2).split("-")[0])
                             gsNode.cmd("route add default gw "+str(intf1.IP())+" dev "+str(intf2));
@@ -341,9 +344,9 @@ class sat_network(Topo):
                             #print "-- Set IP address for "+str(intf2)+" : "+str(oct1)+"."+str(oct2)+"."+str(oct3)+"."+str(int(oct4)+2)+"/28"
                             # Assign the default gw to the ground stations
                             if "gs" in node.name:
-                                debug("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth1", intf2.IP())
+                                debug("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth0", intf2.IP())
                                 # print "route add default gw "+str(intf.link.intf1.IP())+" dev "+node.name+"-eth1", intf.link.intf2.IP()
-                                node.cmd("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth1");
+                                node.cmd("route add default gw "+str(intf1.IP())+" dev "+node.name+"-eth0");
                         else:
                             print "[Create Sat Network -- GSL] No Available IPs to assign"
                             exit()
@@ -377,12 +380,12 @@ class sat_network(Topo):
                         list_of_Intf_IPs[str(intf2)] = []
                         list_of_Intf_IPs[str(intf2)].append(str(intf2.IP())+"/28")
 
-                        if "gs" in str(intf1) and "eth1" in str(intf1):
+                        if "gs" in str(intf1) and "eth0" in str(intf1):
                             #print "route add default gw "+str(intf2.IP())+" dev "+str(intf1)+"---"+str(intf1).split("-")[0]
                             gsNode = net.getNodeByName(str(intf1).split("-")[0])
                             gsNode.cmd("route add default gw "+str(intf2.IP())+" dev "+str(intf1));
 
-                        if "gs" in str(intf2) and "eth1" in str(intf2):
+                        if "gs" in str(intf2) and "eth0" in str(intf2):
                             #print "route add default gw "+str(intf1.IP())+" dev "+str(intf2)+"----"+str(intf2).split("-")[0]
                             gsNode = net.getNodeByName(str(intf2).split("-")[0])
                             gsNode.cmd("route add default gw "+str(intf1.IP())+" dev "+str(intf2));
@@ -589,7 +592,7 @@ class sat_network(Topo):
         cnt_queue.put(stepCnt)
 
     def startRoutingConfigV2(self, data_path, net, satellites, ground_stations, intfs):
-        counter = 0
+        counter = 1
         patch_counter = 10
         for i in range(0, len(satellites)):
             sat_node = net.getNodeByName("sat"+str(i))
@@ -598,7 +601,15 @@ class sat_network(Topo):
             if patch_counter == 0:
                 time.sleep(5)
                 patch_counter = 10
-            if i%20 == 0:
-                print ".......... Configure the routing tables of satellites", (counter*20), "-", i
+            if i%100 == 0:
+                print ".......... Configure the routing tables of satellites", i, "-", (counter*100)
                 counter+=1
+
+        time.sleep(60)
+        print ".......... Delete all bash processes now"
+        for i in range(0, len(satellites)):
+            sat_node = net.getNodeByName("sat"+str(i))
+            pkill_command = "pkill -f "+"*_routes.sh"
+            sat_node.cmd(pkill_command)
+
             # sat_node.cmd("python ../comm_protocol/config_gs_sat_table.py "+"sat"+str(i)+" &")

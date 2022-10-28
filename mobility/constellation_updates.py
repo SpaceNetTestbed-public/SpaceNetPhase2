@@ -31,8 +31,8 @@ def constellation_updates(tle_url, ground_stations, running_time):
 
     for gs in ground_stations:
         for sat in satellites:
-            d = distance_between_ground_station_satellite(gs, sat, running_time)
-            if d <= 1089686.4181956202:
+            d = distance_between_ground_station_satellite_alan(gs, sat, running_time)
+            if d[1] <= 1089686.4181956202:
                 shellnum = extract_starlink_shells("./starlink.txt", sat.name)
                 dt, leap_second = running_time.utc_datetime_and_leap_second()
                 newscs = ((str(dt).split(" ")[1]).split(":")[2]).split("+")[0]
@@ -40,7 +40,7 @@ def constellation_updates(tle_url, ground_stations, running_time):
                 year, month, day = date.split("-")
                 hour, minute, second = timeN.split(":")
                 loggedTime = str(year)+","+str(month)+","+str(day)+","+str(hour)+","+str(minute)+","+str(newscs)
-                temp_list.append([loggedTime, d, gs["name"], sat.name, shellnum])
+                temp_list.append([loggedTime, d[1], d[0], d[2], gs["name"], sat.name, shellnum])
 
     a = sorted(temp_list, key=lambda x: x[1])
     for aa in a:
@@ -63,10 +63,13 @@ def main():
         "cartesian_z": float(4969839.203),
     }
     ground_stations = [gs_Alan]
-    total_duration_in_seconds=2*60*60
+    total_duration_in_seconds=1*60*60
+    j = 0
     for i in range(total_duration_in_seconds):
-        j = i/float(100.0)
-        t = ts.utc(int(2022), int(9), int(14), int(00), int(00), float(0)+j)
+        # j = i/float(100.0)
+        j += 1
+        # print j,i
+        t = ts.utc(int(2022), int(10), int(10), int(13), int(00), float(0)+j)
         constellation_updates("https://celestrak.org/NORAD/elements/supplemental/starlink.txt", ground_stations, t)
         print "----------------------------------------------------------------------------------------"
 

@@ -11,20 +11,20 @@ from link.link_utils import *
 
 def calc_max_gsl_length(main_configurations):
     max_gsl_length_m = -1
-    if main_configurations["constellation"] == "starlink":
+    if main_configurations["constellation"]["operator"] == "starlink":
         max_gsl_length_m = 1089686.4181956202;
         return max_gsl_length_m
 
     else:
-        satellite_cone_radius_m = (main_configurations["altitude"])/math.tan(math.radians(main_configurations["elevation_angle"]))
-        max_gsl_length_m =  math.sqrt(math.pow(satellite_cone_radius_m, 2) + math.pow(main_configurations["altitude"], 2))
+        satellite_cone_radius_m = (main_configurations["constellation"]["shell1"]["altitude"])/math.tan(math.radians(main_configurations["constellation"]["shell1"]["elevation_angle"]))
+        max_gsl_length_m =  (math.sqrt(math.pow(satellite_cone_radius_m, 2) + math.pow(main_configurations["constellation"]["shell1"]["altitude"], 2)))*1000
         return max_gsl_length_m
 
     return max_gsl_length_m
 
 channnel_bandwidth_downlink = 240
 channnel_bandwidth_uplink = 60
-number_of_users_per_cell = 4.0
+number_of_users_per_cell = 5.0
 density = 1.0/float(number_of_users_per_cell);
 
 def calc_distance_gs_sat_worker(args):
@@ -171,8 +171,33 @@ def find_adjacent_orbit_sat(current_plane, current_sat, adj_plane, satellites_so
             min_distance = distance
             nearest_sat_in_adj_plane = adj_plane_sats[i]
 
-
     return nearest_sat_in_adj_plane.name.split(" ")[0]
+
+def find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, current_plane, current_sat, adj_plane, satellites_sorted_in_orbits, satellites_by_name, t):
+    number_of_neighbors_per_sat = {}
+    for i in range(len(satellites_by_name)):
+        number_of_neighbors_per_sat[i] = 0
+
+    for i in range(len(connectivity_matrix)):
+        for j in range(len(connectivity_matrix[i])):
+            if connectivity_matrix[i][j] == 1:
+                number_of_neighbors_per_sat[i] += 1
+
+    adj_plane_sats = satellites_sorted_in_orbits[adj_plane]
+    nearest_sat_in_adj_plane = -1
+    min_distance = 1000000000000000
+
+    for i in range(len(adj_plane_sats)):
+        distance = distance_between_two_satellites(current_sat, adj_plane_sats[i], t)
+        satindx = satellites_by_index.keys()[satellites_by_index.values().index(str(adj_plane_sats[i].name.split(" ")[0]))]
+        if distance < min_distance and number_of_neighbors_per_sat[satindx] < 5:
+            min_distance = distance
+            nearest_sat_in_adj_plane = adj_plane_sats[i]
+
+    if nearest_sat_in_adj_plane != -1:
+        return nearest_sat_in_adj_plane.name.split(" ")[0]
+
+    return nearest_sat_in_adj_plane
 
 def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, isl_config, t):
     n_orbits = len(satellites_sorted_in_orbits)
@@ -187,6 +212,7 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
                 # print ("Intra-Orbit connection between ",i,j, total_sat_now, sat, sat_same_orbit)
                 connectivity_matrix[sat][sat_same_orbit] = 1
                 connectivity_matrix[sat_same_orbit][sat] = 1
+                # print "same orbit ", i, sat, sat_same_orbit
 
                 current_sat = satellites_by_index[sat]
                 current_sat = satellites_by_name[str(current_sat)]
@@ -194,14 +220,46 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
                 # Grid for the edge satellites
                 sat_adjacent_orbit_1 = find_adjacent_orbit_sat(i, current_sat, (i+1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
                 sat_adjacent_orbit_1 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_1))]
+
                 sat_adjacent_orbit_2 = find_adjacent_orbit_sat(i, current_sat, (i-1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
                 sat_adjacent_orbit_2 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_2))]
 
+
                 connectivity_matrix[sat][sat_adjacent_orbit_1] = 1
                 connectivity_matrix[sat_adjacent_orbit_1][sat] = 1
-
                 connectivity_matrix[sat][sat_adjacent_orbit_2] = 1
                 connectivity_matrix[sat_adjacent_orbit_2][sat] = 1
+
+            total_sat_now += n_sats_per_orbit
+
+    if isl_config == "SAME_ORBIT_AND_GRID_ACROSS_ORBITS_ONEWEB":
+        for i in range(len(satellites_sorted_in_orbits)):
+            n_sats_per_orbit = len(satellites_sorted_in_orbits[i])
+            for j in range(n_sats_per_orbit):
+                sat = total_sat_now + j
+                sat_same_orbit = total_sat_now + ((j + 1) % n_sats_per_orbit)
+                if sat != sat_same_orbit:
+                    connectivity_matrix[sat][sat_same_orbit] = 1
+                    connectivity_matrix[sat_same_orbit][sat] = 1
+
+                current_sat = satellites_by_index[sat]
+                current_sat = satellites_by_name[str(current_sat)]
+
+                # Grid for the edge satellites
+                sat_adjacent_orbit_1 = find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, i, current_sat, (i+1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
+                if sat_adjacent_orbit_1 != -1:
+                    sat_adjacent_orbit_1 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_1))]
+                sat_adjacent_orbit_2 = find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, i, current_sat, (i-1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
+                if sat_adjacent_orbit_2 != -1:
+                    sat_adjacent_orbit_2 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_2))]
+
+                if sat_adjacent_orbit_1 != -1:
+                    connectivity_matrix[sat][sat_adjacent_orbit_1] = 1
+                    connectivity_matrix[sat_adjacent_orbit_1][sat] = 1
+
+                if sat_adjacent_orbit_2 != -1:
+                    connectivity_matrix[sat][sat_adjacent_orbit_2] = 1
+                    connectivity_matrix[sat_adjacent_orbit_2][sat] = 1
 
             total_sat_now += n_sats_per_orbit
 
@@ -209,11 +267,11 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
 
 def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, number_of_threads, association_criteria, t, main_configurations):
     max_gsl_length_m = calc_max_gsl_length(main_configurations)
-    if main_configurations["Debug"] == 1:
-        print ".......... Maximum GSL links for", main_configurations["constellation"], "Constellation is ", max_gsl_length_m, " meters"
+    if main_configurations["simulation"]["debug"] == 1:
+        print ".......... Maximum GSL links for", main_configurations["constellation"]["operator"], "Constellation is ", max_gsl_length_m, " meters"
 
     if max_gsl_length_m == -1:
-        if main_configurations["Debug"] == 1:
+        if main_configurations["simulation"]["debug"] == 1:
             print ("[Mininet_add_GSLs] --- check the max GSL length variable ")
             return ;
     # find all satellites in range for each ground station.
@@ -372,6 +430,7 @@ def M_gs_sat_association_criteria_BasedOnDistance(connectivity_matrix, all_gs_sa
 
             connectivity_matrix[chosen_sid][num_of_satellites+gid] = 1
             connectivity_matrix[num_of_satellites+gid][chosen_sid] = 1
+            # print chosen_sid, gid, best_distance_m
             # if gid == 1:
             #     chosen_sid = chosen_sid_forAlan
             #     connectivity_matrix[chosen_sid][num_of_satellites+gid] = 1
@@ -518,14 +577,18 @@ def calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_
                 distance_meters             = distance_between_ground_station_satellite(ground_stations[i-len(satellites_by_index)], satellites_by_name[str(satellites_by_index[j])], t)
                 latency_matrix[i][j]        = ((distance_meters)/299792458.0)*1000            #speed of light
                 # snr                         = calc_gsl_snr_given_distance(distance_meters)
-                snr                         = calc_gsl_snr(satellites_by_name[str(satellites_by_index[j])], ground_stations[i-len(satellites_by_index)], t, distance_meters, "uplink")
+                snr                         = calc_gsl_snr(satellites_by_name[str(satellites_by_index[j])], ground_stations[i-len(satellites_by_index)], t, distance_meters, "downlink")
                 channel_width               = channnel_bandwidth_downlink
-                throughput_matrix[i][j]     = channel_width*(math.log(1+snr)/math.log(2))
+                throughput_matrix[i][j]     = density*channel_width*(math.log(1+snr)/math.log(2))
+                if throughput_matrix[i][j] > 500:
+                    throughput_matrix[i][j] = 500
 
                 if i-len(satellites_by_index) == 1:
                     snr                         = calc_gsl_snr(satellites_by_name[str(satellites_by_index[j])], ground_stations[i-len(satellites_by_index)], t, distance_meters, "downlink")
                     channel_width               = channnel_bandwidth_downlink
-                    throughput_matrix[i][j]     = channel_width*(math.log(1+snr)/math.log(2))
+                    throughput_matrix[i][j]     = density*channel_width*(math.log(1+snr)/math.log(2))
+                    if throughput_matrix[i][j] > 500:
+                        throughput_matrix[i][j] = 500
                     # print "inside if ", snr, throughput_matrix[i][j], latency_matrix[i][j], distance_meters, i, j
 
                 # print "Uplink", snr, throughput_matrix[i][j], latency_matrix[i][j], distance_meters, i, j
@@ -535,7 +598,9 @@ def calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_
                 latency_matrix[i][j]        = ((distance_meters)/299792458.0)*1000            #speed of light
                 # snr                         = calc_gsl_snr_given_distance(distance_meters)
                 snr                         = calc_gsl_snr(satellites_by_name[str(satellites_by_index[i])], ground_stations[j-len(satellites_by_index)], t, distance_meters, "downlink")
-                throughput_matrix[i][j]     = channnel_bandwidth_downlink*(math.log(1+snr)/math.log(2))
+                throughput_matrix[i][j]     = density*channnel_bandwidth_downlink*(math.log(1+snr)/math.log(2))
+                if throughput_matrix[i][j] > 500:
+                    throughput_matrix[i][j] = 500
                 # print "Donwlink", snr, throughput_matrix[i][j], latency_matrix[i][j], distance_meters, i, j
 
     return {
