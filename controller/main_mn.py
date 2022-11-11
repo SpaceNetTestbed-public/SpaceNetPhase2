@@ -183,10 +183,10 @@ def main():
                 print "..... Configure Mininet Phase:"
 
             topology                = sat_network(N=N)
-            topg                    = topology.create_sat_network(satellites=satellites_by_index, ground_stations=ground_stations, connectivity_matrix=satnat_topology_change["connectivity_matrix"], link_throughput=satnat_topology_change["links_capacity"], link_latency=satnat_topology_change["links_latency"], Tmode=1, physical_gs_index=[], physical_sats_index=[])
+            topg                    = topology.create_sat_network(satellites=satellites_by_index, ground_stations=ground_stations, connectivity_matrix=satnat_topology_change["connectivity_matrix"], link_throughput=satnat_topology_change["links_capacity"], link_latency=satnat_topology_change["links_latency"], Tmode=1, physical_gs_index=[], physical_sats_index=[], border_gateway=main_configurations["constellation"]["routing"]["border_gateway"])
             net                     = Mininet(topo = topology, link=TCLink, autoSetMacs = True, controller=OVSController)
             net.start()
-            list_of_Intf_IPs        = topology.initial_ipv4_assignment_for_interfaces_optimised(main_configurations["data_n_results"]["simulation_results"], net, available_ips, [])
+            list_of_Intf_IPs        = topology.initial_ipv4_assignment_for_interfaces_optimised(main_configurations["data_n_results"]["simulation_results"], net, available_ips, [], main_configurations["constellation"]["routing"]["border_gateway"])
             if main_configurations["simulation"]["debug"] == 1:
                 print "------------------------------------------------------------------"
                 print "..... Generate IP Route Linux Commands Phase: "
@@ -209,7 +209,7 @@ def main():
                 print "..... Compute Ground Stations Routing Phase:"
 
             start = round(time.time()*1000)
-            gs_routing(main_configurations["data_n_results"]["simulation_results"], gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations)
+            gs_routing(main_configurations["data_n_results"]["simulation_results"], gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations, main_configurations["constellation"]["routing"]["border_gateway"])
             end = round(time.time()*1000)
 
             if main_configurations["simulation"]["debug"] == 1:
@@ -226,6 +226,9 @@ def main():
                 print "......... Deploy the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
 
             net = run_application(main_configurations["data_n_results"]["simulation_results"], net, main_configurations, list_of_Intf_IPs)
+	    #CLI(net)
+	    #net.stop()
+	    #exit()
         else:
             topology_changes                = check_changes_in_topology(old_connectivity_matrix, satnat_topology_change["connectivity_matrix"])
             latency_changes                 = check_changes_in_link_charateristics(old_links_latency, satnat_topology_change["links_latency"])
@@ -239,7 +242,7 @@ def main():
                 print ".......... Total link charateristics changes = ", len(links_charateristics_changes[0]), len(links_charateristics_changes[1])
 
             if len(topology_changes) > 0 and len(topology_changes) < 100:
-                lightweight_routing(main_configurations["data_n_results"]["simulation_results"], topology_changes, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], time_utc_inc)
+                lightweight_routing(main_configurations["data_n_results"]["simulation_results"], topology_changes, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], time_utc_inc, main_configurations["constellation"]["routing"]["border_gateway"])
                 net = apply_topology_updates_to_mininet(main_configurations["data_n_results"]["simulation_results"], net, topology_changes, num_of_satellites, time_utc_inc)
                 net = apply_link_updates_to_mininet(net, links_charateristics_changes[0], links_charateristics_changes[1], num_of_satellites, time_utc_inc)
 

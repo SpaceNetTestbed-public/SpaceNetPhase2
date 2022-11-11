@@ -23,6 +23,7 @@ def gs_routing_worker (data_path, gs_sat, links_updated, num_of_satellites, sate
     update_gsl_routing_cmd = []
     gs_number = int(gs_sat[1])%num_of_satellites
     gs_ip = get_gs_ip(list_of_Intf_IPs, "gs"+str(gs_number)+"-eth0").split("/")[0]
+
     gs_network_address = get_network_address(gs_ip)
     thread_list = []
     for i in range(num_of_satellites):
@@ -447,12 +448,16 @@ def get_gs_ip(list_of_Intf_IPs, gs):
 
     return -1
 
-def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes, main_configurations):
+def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes, main_configurations, border_gateway):
     update_gsl_routing_cmd = []
     for gs_sat in gs_statellite_pair:
         gs_number = int(gs_sat[1])%num_of_satellites
 
-        key = str("gs"+str(gs_number)+"-eth0")
+        if "gs"+str(gs_number) != border_gateway:
+            key = str("gs"+str(gs_number)+"-eth0")
+        else:
+            key = str("gs"+str(gs_number)+"-eth1")
+
         # print key
         if list_of_Intf_IPs.get(key) is None:
             print "error -- no ip for this ground station", gs_number
@@ -498,7 +503,7 @@ def gs_routing_parallel(data_path, gs_statellite_pair, links_updated, num_of_sat
     for thread in thread_list:
         thread.join()
 
-def lightweight_routing(data_path, route_changes, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes, t_time):
+def lightweight_routing(data_path, route_changes, links_updated, num_of_satellites, satellites_by_index, list_of_Intf_IPs, constellation_routes, t_time, border_gateway):
     update_gsl_routing_cmd = []
     isl_ch = 0
     gsl_ch = 0
@@ -514,7 +519,11 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
         if change[0] < num_of_satellites and change[1] >= num_of_satellites:
             # 1. Get the network address of the changing ground station
             gs_number = int(change[1])%num_of_satellites
-            key = str("gs"+str(gs_number)+"-eth0")
+            if "gs"+str(gs_number) != border_gateway:
+                key = str("gs"+str(gs_number)+"-eth0")
+            else:
+                key = str("gs"+str(gs_number)+"-eth1")
+
             if list_of_Intf_IPs.get(key) is None:
                 print "error -- no ip for this ground station", gs_number
                 return

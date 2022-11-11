@@ -107,7 +107,7 @@ while 1:
     ts = load.timescale()
     t = ts.now()
     addthis += 1
-    t = ts.utc(int(2022), int(7), int(25), int(15), int(15), float(0)+addthis)
+    t = ts.utc(int(2022), int(11), int(2), int(12), int(24), float(8)+addthis)
     print t.utc_strftime()
     # print t.utc_strftime()
     connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
