@@ -2,8 +2,8 @@
 
 import numpy as np
 
-data = open("iperf_27oct.txt","r")
-header = 5
+data = open("iperf_27oct_NYtoLondon.txt","r")
+header = 6
 lines = data.readlines()
 
 index = 0
@@ -13,17 +13,27 @@ transfer = np.empty((datalength,1))
 bandwidth = np.empty((datalength,1))
 
 for line in lines:
-	if index>header-1:
+	if index>header-1 and index<=14:
 		bin1 = line.split(" ")
-
+#		print bin1
 		transfer[index-header-1,0]=float(bin1[5])
-		bandwidth[index-header-1,0]=float(bin1[7])
+		if bin1[7]== '':
+			bandwidth[index-header-1,0]=float(bin1[7+1])
+		else:
+			bandwidth[index-header-1,0]=float(bin1[7])
+	elif index>14:
+		if index == len(lines)-1:
+			break
+		else:
+			bin1 = line.split(" ")
+#			print bin1
 
-	elseif index>13:
-		bin1 = line.split(" ")
+			transfer[index-header-1,0]=float(bin1[4])
 
-		transfer[index-header-1,0]=float(bin1[4])
-		bandwidth[index-header-1,0]=float(bin1[6])
+			if bin1[6]== "":
+				bandwidth[index-header-1,0]=float(bin1[7])
+			else:
+				bandwidth[index-header-1,0]=float(bin1[6])
 
 	index = index + 1
 
