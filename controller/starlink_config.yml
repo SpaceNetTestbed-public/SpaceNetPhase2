@@ -23,7 +23,7 @@ ground_stations:
 
 simulation:
     start_time: 2022,11,14,8,30,0
-    length: 30
+    length: 32
     step: 1
     debug: 1
 
