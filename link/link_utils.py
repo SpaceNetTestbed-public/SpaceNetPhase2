@@ -32,7 +32,7 @@ ground_station_receive_attenna_gain     = 33.2;             #dBi -- https://apps
 ground_station_transmit_attenna_gain    = 34.6;             #dBi -- https://apps.fcc.gov/els/GetAtt.html?id=259301
 
 def get_weather_info(lat, lon):
-    url = "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=metric" % (str(lat), str(lon), api_key)
+    url = "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=standard" % (str(lat), str(lon), api_key)
     response = requests.get(url)
     data = response.json()
     if data != "":
@@ -52,7 +52,6 @@ def get_weather_info(lat, lon):
 def calc_gsl_snr(satellite, ground_station, t, distance, direction):
     gsl_distance = distance
     # distance_between_ground_station_satellite(ground_station, satellite, t);
-
     fspl = 20 * math.log10(gsl_distance/1000) + 20 * math.log10(channelFreq_sat_to_ground) + 92.45;
 
     lat_gs = float(ground_station["latitude_degrees_str"])
@@ -83,7 +82,8 @@ def calc_gsl_snr(satellite, ground_station, t, distance, direction):
         else:
             r001 = None
 
-        temp = float(weather_data["temp"])
+        temp = float(weather_data["temp"])	#temp in Kelvin
+	#temp = temp + 273.15
         humidity = float(weather_data["humidity"])
         pressure = float(weather_data["pressure"])
         # print temp, humidity, pressure
@@ -119,7 +119,6 @@ def calc_gsl_snr(satellite, ground_station, t, distance, direction):
     noise_watt = 200 * 1.38064852 * pow(10, -23) * 250*pow(10, 6);        #ktB channnel_bandwidth_downlink
     # print fspl, rss_dBm, rss_watt, noise_watt
     snr = rss_watt/noise_watt;
-
     return snr
 
 def calc_gsl_snr_given_distance(gsl_distance):

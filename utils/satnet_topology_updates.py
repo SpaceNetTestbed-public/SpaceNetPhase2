@@ -15,7 +15,7 @@ from routing.constellation_routing import *
 
 def main():
     # 1 - Read configurations
-    main_configurations = parse_config_file_yml(".","../controller/oneweb_config.yml")
+    main_configurations = parse_config_file_yml(".","../controller/starlink_config.yml")
 
     # 2 - Get current time
     ts = load.timescale()
@@ -27,7 +27,7 @@ def main():
     print time_utc, time_timestamp
 
     # 3 - Choose the recent TLE and load satellites
-    path_of_recent_TLE = get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
+    path_of_recent_TLE = "./starlink_tles/starlink_1668421146" #get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
     print path_of_recent_TLE
     tle_timestamp = path_of_recent_TLE.split("_")[2]
     satellites = load.tle_file(path_of_recent_TLE)
@@ -60,10 +60,10 @@ def main():
         inc += time_resolution_in_seconds
         time_utc_inc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s)+inc)
         time_timestamp = convert_time_utc_to_unix(time_utc_inc)
-        new_file = get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
+        new_file = "./starlink_tles/starlink_1668421146" #get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
         if  new_file != path_of_recent_TLE:
             path_of_recent_TLE = new_file
-            reloaded_vars = reload_tles(path_of_recent_TLE)
+            reloaded_vars = reload_tles(path_of_recent_TLE, main_configurations)
             satellites_sorted_in_orbits = reloaded_vars["satellites_sorted_in_orbits"]
             satellites_by_name = reloaded_vars["satellites_by_name"]
             satellites_by_index = reloaded_vars["satellites_by_index"]

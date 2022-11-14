@@ -22,7 +22,7 @@ ground_stations:
     gs_file: ../mobility/ground_stations_small.txt
 
 simulation:
-    start_time: 2022,10,18,1,1,13
+    start_time: 2022,11,14,8,30,0
     length: 30
     step: 1
     debug: 1

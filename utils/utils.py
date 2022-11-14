@@ -117,7 +117,7 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
     satellites_by_index = {}
 
-    orbital_data  = get_orbital_planes_classifications(path_of_recent_TLE, main_configurations["constellation"], main_configurations["number_of_orbits"], main_configurations["number_of_sat_per_orbit"], main_configurations["inclination"])
+    orbital_data  = get_orbital_planes_classifications(path_of_recent_TLE, main_configurations["constellation"], main_configurations["orbits"], main_configurations["sat_per_orbit"], main_configurations["inclination"])
     arranged_sats = arrange_satellites(orbital_data, satellites_by_name, main_configurations, time_utc ,satellites_by_index, tle_timestamp)
     satellites_by_index = arranged_sats["satellites by index"]
     satellites_sorted_in_orbits = arranged_sats["sorted satellite in orbits"]
@@ -125,7 +125,7 @@ def reload_tles(path_of_recent_TLE, main_configurations):
 
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
-    if main_configurations["Debug"] == 1:
+    if main_configurations["simulation"]["debug"] == 1:
         print "................................. Re Loading the new TLE files ..........................."
         print ".......... total number of satellites = ", num_of_satellites
         print ".......... total number of ground_stations = ", num_of_ground_stations
