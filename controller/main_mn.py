@@ -116,11 +116,10 @@ def main():
     satellites_by_name              = {sat.name.split(" ")[0]: sat for sat in satellites}
     satellites_by_index             = {}
     orbital_data                    = get_orbital_planes_classifications(path_of_recent_TLE, main_configurations["constellation"]["operator"], main_configurations["constellation"]["shell1"]["orbits"], main_configurations["constellation"]["shell1"]["sat_per_orbit"], main_configurations["constellation"]["shell1"]["inclination"])
-
     arranged_sats                   = arrange_satellites("../utils/", orbital_data, satellites_by_name, main_configurations, main_configurations["simulation"]["start_time"] ,satellites_by_index, path_of_recent_TLE.split("_")[2])
     satellites_by_index             = arranged_sats["satellites by index"]
     satellites_sorted_in_orbits     = arranged_sats["sorted satellite in orbits"]
-
+    exit()
     ground_stations                 = read_gs(main_configurations["ground_stations"]["gs_file"])
     num_of_satellites               = len(orbital_data)
     num_of_ground_stations          = len(ground_stations)

@@ -82,7 +82,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
         satellites_in_orbit = []
         cn = 0
         for data in orbital_data:
-            if i == int(orbital_data[str(data)][2]):
+            if i == int(orbital_data[str(data)][0]):
                 satellites_in_orbit.append(satellites_by_name[str(data.split(" ")[0])])
                 cn +=1
 
