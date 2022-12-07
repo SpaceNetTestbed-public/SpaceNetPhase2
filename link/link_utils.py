@@ -32,7 +32,7 @@ ground_station_receive_attenna_gain     = 33.2;             #dBi -- https://apps
 ground_station_transmit_attenna_gain    = 34.6;             #dBi -- https://apps.fcc.gov/els/GetAtt.html?id=259301
 
 def get_weather_info(lat, lon):
-    url = "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=metric" % (str(lat), str(lon), api_key)
+    url = "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=standard" % (str(lat), str(lon), api_key)
     response = requests.get(url)
     data = response.json()
     if data != "":

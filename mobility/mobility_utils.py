@@ -3,6 +3,7 @@ import time
 from multiprocessing import Process, Manager, Pool
 import itertools
 import math
+import threading
 
 import sys
 sys.path.append("../")
@@ -41,10 +42,27 @@ def calc_distance_gs_sat_worker(args):
     distance_m = distance_between_ground_station_satellite(ground_station, satellite, time_t)
     if distance_m <= max_gsl_length_m:
         satellites_in_range.append((distance_m, sid, ground_station["gid"]))
+        # print ground_station["gid"], sid, distance_m
 
     ground_station_satellites_in_range.append(satellites_in_range)
 
     return ground_station_satellites_in_range
+
+def calc_distance_gs_sat_thread(ground_stations, satellites_by_name, satellites_by_index, time_t, max_gsl_length_m, ground_station_satellites_in_range):
+    # ground_station_satellites_in_range = []
+    # satellites_in_range = []
+    for gs in ground_stations:
+        for sid in range(len(satellites_by_index)):
+            distance_m = distance_between_ground_station_satellite(gs, satellites_by_name[str(satellites_by_index[sid])], time_t)
+            if distance_m <= max_gsl_length_m:
+                ground_station_satellites_in_range.append((distance_m, sid, gs["gid"]))
+            # print gs["gid"], sid, distance_m
+
+    # ground_station_satellites_in_range.append(satellites_in_range)
+    # print len(ground_station_satellites_in_range)
+    return ground_station_satellites_in_range
+
+    # return ground_station_satellites_in_range
 
 def calc_distance_gs_sat_worker_alan(args):
     (
@@ -130,10 +148,11 @@ def find_adjacent_orbit_sat(current_plane, current_sat, adj_plane, satellites_so
 
     for i in range(len(adj_plane_sats)):
         distance = distance_between_two_satellites(current_sat, adj_plane_sats[i], t)
-        if distance < min_distance:
+        if distance < min_distance and distance < 5016000:
             min_distance = distance
             nearest_sat_in_adj_plane = adj_plane_sats[i]
 
+    # print current_sat, min_distance, nearest_sat_in_adj_plane.name.split(" ")[0]
     return nearest_sat_in_adj_plane.name.split(" ")[0]
 
 def find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, current_plane, current_sat, adj_plane, satellites_sorted_in_orbits, satellites_by_name, t):
@@ -167,6 +186,7 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
     total_sat_now = 0
     if isl_config == "SAME_ORBIT_AND_GRID_ACROSS_ORBITS":
         for i in range(len(satellites_sorted_in_orbits)):
+            # start_t = round(time.time()*1000)
             n_sats_per_orbit = len(satellites_sorted_in_orbits[i])
             for j in range(n_sats_per_orbit):
                 sat = total_sat_now + j
@@ -194,6 +214,8 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
                 connectivity_matrix[sat_adjacent_orbit_2][sat] = 1
 
             total_sat_now += n_sats_per_orbit
+            # end_t = round(time.time()*1000)
+            # print ".......... each loop", i, (end_t-start_t)/1000, "secs"
 
     if isl_config == "SAME_ORBIT_AND_GRID_ACROSS_ORBITS_ONEWEB":
         for i in range(len(satellites_sorted_in_orbits)):
@@ -249,8 +271,10 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
     if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET" or association_criteria == "BASED_ON_LONGEST_ASSOCIATION_TIME" :
         pool = Pool(number_of_threads)
         ground_station_satellites_in_range_temporary = pool.map(calc_distance_gs_sat_worker, list_args)
+
         pool.close()
         pool.join()
+        # print len(ground_station_satellites_in_range_temporary)
 
     if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET_ALAN":
         # print "Im ahere"
@@ -261,6 +285,8 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
 
     # Find the best satellite
     if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET":
+        # print "here"
+        # print ground_station_satellites_in_range_temporary
         return M_gs_sat_association_criteria_BasedOnDistance(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, len(satellites_by_index), t)
 
     if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET_ALAN":
@@ -271,6 +297,89 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
 
     return -1
 
+def mininet_add_GSLs_parallel(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, number_of_threads, association_criteria, t, main_configurations):
+    max_gsl_length_m = calc_max_gsl_length(main_configurations)
+    if main_configurations["simulation"]["debug"] == 1:
+        print ".......... Maximum GSL links for", main_configurations["constellation"]["operator"], "Constellation is ", max_gsl_length_m, " meters"
+
+    if max_gsl_length_m == -1:
+        if main_configurations["simulation"]["debug"] == 1:
+            print ("[Mininet_add_GSLs] --- check the max GSL length variable ")
+            return ;
+    # find all satellites in range for each ground station.
+    number_of_pools = round((len(ground_stations)/number_of_threads))
+    num_of_gs_per_pool = round((len(ground_stations)/number_of_pools))
+
+
+    ground_station_satellites_in_range = [[] for c in range(int(number_of_pools+1))]
+    # print ground_station_satellites_in_range
+    thread_list = []
+    output = []
+    count = 0
+    for i in range(0, len(ground_stations), int(num_of_gs_per_pool)):
+        subgs_list = ground_stations[i:i+int(num_of_gs_per_pool)]
+        # print subgs_list
+        # list_args = []
+        # print count
+        thread = threading.Thread(target=calc_distance_gs_sat_thread, args=(subgs_list, satellites_by_name, satellites_by_index, t, max_gsl_length_m, ground_station_satellites_in_range[count]))
+        thread_list.append(thread)
+        count += 1
+
+    for thread in thread_list:
+        thread.start()
+    for thread in thread_list:
+        thread.join()
+        # thread.close()
+
+    ground_station_satellites_in_range_temporary = []
+    for list in ground_station_satellites_in_range:
+        for ls in list:
+            ground_station_satellites_in_range_temporary.append([[ls]])
+    # print ground_station_satellites_in_range_temporary
+    # for lis in ground_station_satellites_in_range:
+        # ground_station_satellites_in_range_temporary.append(lis)
+
+
+    # print len(ground_station_satellites_in_range_temporary)
+        # if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET" or association_criteria == "BASED_ON_LONGEST_ASSOCIATION_TIME" :
+        #     pool = Pool(number_of_threads)
+        #     ground_station_satellites_in_range_temporary = pool.map(calc_distance_gs_sat_worker, list_args)
+        #     # pool.close()
+        #     # pool.join()
+
+    # list_args = []
+    # for ground_station in ground_stations:
+    #     satellites_in_range = []
+    #     for sid in range(len(satellites_by_index)):
+    #         list_args.append((ground_station, satellites_by_name[str(satellites_by_index[sid])], sid, t, max_gsl_length_m))
+
+
+    # print association_criteria
+    # if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET" or association_criteria == "BASED_ON_LONGEST_ASSOCIATION_TIME" :
+    #     pool = Pool(number_of_threads)
+    #     ground_station_satellites_in_range_temporary = pool.map(calc_distance_gs_sat_worker, list_args)
+    #     pool.close()
+        # pool.join()
+
+    # if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET_ALAN":
+    #     # print "Im ahere"
+    #     pool = Pool(number_of_threads)
+    #     ground_station_satellites_in_range_temporary = pool.map(calc_distance_gs_sat_worker_alan, list_args)
+    #     pool.close()
+    #     pool.join()
+
+    # Find the best satellite
+    if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET":
+        # print "here"
+        return M_gs_sat_association_criteria_BasedOnDistance(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, len(satellites_by_index), t)
+
+    if association_criteria == "BASED_ON_DISTANCE_ONLY_MININET_ALAN":
+        return M_gs_sat_no_association_criteria(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, len(satellites_by_index), t, satellites_by_index)
+
+    if association_criteria == "BASED_ON_LONGEST_ASSOCIATION_TIME":
+        return M_gs_sat_association_criteria_MaxAssociationTime(connectivity_matrix, ground_station_satellites_in_range_temporary, ground_stations, len(satellites_by_index), satellites_by_index, satellites_by_name, max_gsl_length_m, t)
+
+    return -1
 
 def M_gs_sat_no_association_criteria(connectivity_matrix, all_gs_satellites_in_range, ground_stations, num_of_satellites, t, satellites_by_index):
     ground_station_satellites_in_range = []

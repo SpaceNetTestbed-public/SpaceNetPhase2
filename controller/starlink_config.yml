@@ -19,10 +19,10 @@ constellation:
         other_constellation_ip_range: 11.0.0.0
 
 ground_stations:
-    gs_file: ../mobility/ground_stations_small.txt
+    gs_file: ../mobility/ground_stations.txt
 
 simulation:
-    start_time: 2022,10,18,1,1,13
+    start_time: 2022,11,30,13,3,58
     length: 30
     step: 1
     debug: 1

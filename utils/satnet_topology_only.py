@@ -20,7 +20,7 @@ def main():
     # 2 - Get current time
     ts = load.timescale()
     inc = 0
-    time_resolution_in_seconds = 1
+    time_resolution_in_seconds = 20
     y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
     time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     time_timestamp = convert_time_utc_to_unix(time_utc)
@@ -55,6 +55,7 @@ def main():
 
     conn_mat_size = num_of_satellites + num_of_ground_stations
 
+    old_connectivity_matrix = [[-1 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
     # 6 - Loop, update the topology and save it in a file.
     while 1:
         inc += time_resolution_in_seconds
@@ -85,37 +86,35 @@ def main():
             num_of_satellites = reloaded_vars["num_of_satellites"]
 
         conn_mat_size = num_of_satellites + num_of_ground_stations
-        if main_configurations["simulation"]["debug"] == 1:
-            print "..... Time: ", time_utc_inc.utc_strftime()
+        # if main_configurations["simulation"]["debug"] == 1:
+        #     print "..... Time: ", time_utc_inc.utc_strftime()
         start = round(time.time()*1000)
         connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
         if main_configurations["constellation"]["operator"] == "oneweb":
             connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS_ONEWEB", time_utc_inc)
         else:
             connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", time_utc_inc)
-        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["constellation"]["topology"]["association_criteria_GSL"], time_utc_inc, main_configurations)
-        links_charateristics = calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, time_utc_inc)
 
-        save_topology(connectivity_matrix, links_charateristics, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(sec))
+        # connectivity_matrix = mininet_add_GSLs_parallel(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 40, main_configurations["constellation"]["topology"]["association_criteria_GSL"], time_utc_inc, main_configurations)
+        # links_charateristics = calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, time_utc_inc)
+
+        # save_topology(connectivity_matrix, links_charateristics, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(sec))
         end = round(time.time()*1000)
-        if main_configurations["simulation"]["debug"] == 1:
-            print ".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs"
+        # if main_configurations["simulation"]["debug"] == 1:
+        #     print ".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs"
 
 
-        if main_configurations["simulation"]["debug"] == 1:
-            print "..... Phase-2: Pre-compute Routing Tables:"
+        topology_changes = check_changes_in_topology(old_connectivity_matrix, connectivity_matrix)
+        gsl_changes = 0
+        isl_changes = 0
+        for tp_change in topology_changes:
+            if tp_change[0] >= num_of_satellites or  tp_change[1] >= num_of_satellites:
+                gsl_changes += 1
+            else:
+                isl_changes +=1
 
-        start = round(time.time()*1000)
+        print ".......... changes at ", time_utc_inc.utc_strftime(), len(topology_changes), gsl_changes, isl_changes
+        # print len(topology_changes), gsl_changes, isl_changes
+        old_connectivity_matrix = connectivity_matrix[:]
 
-        all_possible_routes = initial_routing_v2(satellites_by_index, ground_stations, connectivity_matrix, links_charateristics["latency_matrix"])
-
-        end = round(time.time()*1000)
-
-        if main_configurations["simulation"]["debug"] == 1:
-            in_sec = (end-start)/1000.0
-            print ".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
-            print ".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(all_possible_routes), "routes"
-            print "------------------------------------------------------------------"
-
-        save_routes(all_possible_routes, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
 main()
