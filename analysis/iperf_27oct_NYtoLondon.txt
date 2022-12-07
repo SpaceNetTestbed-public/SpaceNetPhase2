@@ -1,0 +1,37 @@
+------------------------------------------------------------
+Client connecting to 12.1.192.66, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[ 3] local 12.1.173.114 port 55186 connected with 12.1.192.66 port 5201
+[ ID] Interval    Transfer   Bandwidth
+[ 3] 0.0- 1.0 sec 7.38 MBytes 61.9 Mbits/sec
+[ 3] 1.0- 2.0 sec 31.4 MBytes  263 Mbits/sec
+[ 3] 2.0- 3.0 sec 40.5 MBytes  340 Mbits/sec
+[ 3] 3.0- 4.0 sec 26.5 MBytes  222 Mbits/sec
+[ 3] 4.0- 5.0 sec 26.6 MBytes  223 Mbits/sec
+[ 3] 5.0- 6.0 sec 26.4 MBytes  221 Mbits/sec
+[ 3] 6.0- 7.0 sec 31.6 MBytes  265 Mbits/sec
+[ 3] 7.0- 8.0 sec 14.6 MBytes  123 Mbits/sec
+[ 3] 8.0- 9.0 sec 21.1 MBytes  177 Mbits/sec
+[ 3] 9.0-10.0 sec 31.8 MBytes  266 Mbits/sec
+[ 3] 10.0-11.0 sec 21.2 MBytes  178 Mbits/sec
+[ 3] 11.0-12.0 sec 15.8 MBytes  132 Mbits/sec
+[ 3] 12.0-13.0 sec 21.2 MBytes  178 Mbits/sec
+[ 3] 13.0-14.0 sec 15.9 MBytes  133 Mbits/sec
+[ 3] 14.0-15.0 sec 21.4 MBytes  179 Mbits/sec
+[ 3] 15.0-16.0 sec 37.0 MBytes  310 Mbits/sec
+[ 3] 16.0-17.0 sec 21.6 MBytes  181 Mbits/sec
+[ 3] 17.0-18.0 sec 21.1 MBytes  177 Mbits/sec
+[ 3] 18.0-19.0 sec 15.9 MBytes  133 Mbits/sec
+[ 3] 19.0-20.0 sec 15.9 MBytes  133 Mbits/sec
+[ 3] 20.0-21.0 sec 36.9 MBytes  309 Mbits/sec
+[ 3] 21.0-22.0 sec 15.8 MBytes  133 Mbits/sec
+[ 3] 22.0-23.0 sec 10.1 MBytes 85.0 Mbits/sec
+[ 3] 23.0-24.0 sec 30.2 MBytes  254 Mbits/sec
+[ 3] 24.0-25.0 sec 21.0 MBytes  176 Mbits/sec
+[ 3] 25.0-26.0 sec 10.6 MBytes 88.6 Mbits/sec
+[ 3] 26.0-27.0 sec 5.03 MBytes 42.2 Mbits/sec
+[ 3] 27.0-28.0 sec 7.33 MBytes 61.5 Mbits/sec
+[ 3] 28.0-29.0 sec 25.2 MBytes  212 Mbits/sec
+[ 3] 29.0-30.0 sec 31.6 MBytes  265 Mbits/sec
+[ 3] 0.0-30.2 sec  659 MBytes  183 Mbits/sec
