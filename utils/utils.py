@@ -18,6 +18,17 @@ import sys
 sys.path.append("../")
 from mobility.read_live_tles import *
 
+def check_time_to_deploy_RE(resiliency_satellite_timestamp, year, month, day, hour, minute, seconds):
+    ret_sats = []
+    for sats in resiliency_satellite_timestamp:
+        RET_start_y,RET_start_m,RET_start_d,RET_start_h,RET_start_min,RET_start_s = resiliency_satellite_timestamp[sats][0].split(",")[0], resiliency_satellite_timestamp[sats][0].split(",")[1], resiliency_satellite_timestamp[sats][0].split(",")[2], resiliency_satellite_timestamp[sats][0].split(",")[3], resiliency_satellite_timestamp[sats][0].split(",")[4], resiliency_satellite_timestamp[sats][0].split(",")[5]
+        if int(RET_start_y) == int(year) and int(RET_start_m) == int(month) and int(RET_start_d) == int(day) and int(RET_start_h) == int(hour) and int(RET_start_min) == int(minute) and int(RET_start_s) == int(seconds):
+            ret_sats.append(sats[3:])
+
+    return ret_sats
+
+# def deploy_RE(satellite_id, connectivity_matrixsatnat_topology_change["connectivity_matrix"], TopologyRoutes["All_PreConfigured_routes"]:
+
 def get_recent_TLEs_using_timestamp(path, timestamp, constellation):
     recent_file = ""
     timestamp_diff = 10000000
@@ -27,8 +38,9 @@ def get_recent_TLEs_using_timestamp(path, timestamp, constellation):
         f = os.path.join(directory, filename)
         if os.path.isfile(f):
             file_timesamp = int(filename.split("_")[1])
-            if int(timestamp-file_timesamp) < timestamp_diff:
+            if int(timestamp-file_timesamp) < timestamp_diff and int(timestamp-file_timesamp) > 0:
                 timestamp_diff = int(timestamp-file_timesamp)
+                print timestamp_diff, file_timesamp, timestamp
                 recent_file = f
 
     return recent_file
@@ -47,6 +59,14 @@ def parse_config_file_yml(filepath, filename):
         cfg = yaml.safe_load(ymlfile)
 
     return cfg
+
+def parse_resiliency_experiment_parameters(main_configurations):
+    resiliency_satellite_timestamp = {}
+
+    for sats, s_timestamps, e_timestamps in zip(main_configurations["resiliency"]["affected_satellites"], main_configurations["resiliency"]["s_timestamps"], main_configurations["resiliency"]["e_timestamps"]):
+        resiliency_satellite_timestamp[sats] = (s_timestamps,e_timestamps)
+
+    return resiliency_satellite_timestamp
 
 def parse_config_file(filepath, filename):
     configurations = {"topology_path":"", "topology_routes_path":"", "simulation_results_n_data":"", "simulation_start_time":"", "simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "inclination":0, "constellation":"starlink", "tle_file":"", "number_of_orbits":0, "number_of_sat_per_orbit":0, "altitude":0, "elevation_angle":0, "experiment":2, "constellation_ip_range":"", "other_constellation_ip_range": "", "association_criteria":"BASED_ON_DISTANCE_ONLY_MININET" ,"exit_gw": "" ,"interDomain_routing":0 , "False_run_archieve_path_foldername":"" ,"Debug":1}
@@ -82,7 +102,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
         satellites_in_orbit = []
         cn = 0
         for data in orbital_data:
-            if i == int(orbital_data[str(data)][2]):
+            if i == int(orbital_data[str(data)][0]):
                 satellites_in_orbit.append(satellites_by_name[str(data.split(" ")[0])])
                 cn +=1
 
@@ -99,12 +119,17 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
                 # print write_this
     f.close()
     # Update the satellite_by_index
+    absolute_path = "/home/mininet/simulator/SimLEO_MConstellations/results/starlink/"
+    file = open(absolute_path+"orbits_satellites.txt", 'w')
     sat_index = -1
+    orbit_id = 0
     for orbit in satellites_sorted_in_orbits:
+        orbit_id += 1
         for i in range(len(orbit)):
             sat_index += 1
             satellites_by_index[sat_index] = orbit[i].name.split(" ")[0]
-
+            file.write(str(orbit_id)+"\t"+str(sat_index)+"\n")
+    file.close()
 
     return {"sorted satellite in orbits": satellites_sorted_in_orbits,
             "satellites by index": satellites_by_index
@@ -122,6 +147,7 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     satellites_by_index = arranged_sats["satellites by index"]
     satellites_sorted_in_orbits = arranged_sats["sorted satellite in orbits"]
 
+    # print satellites_sorted_in_orbits
 
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
@@ -138,7 +164,7 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     }
 
 def save_topology(connectivity_matrix, links_charateristics, main_configurations, timestamp):
-    f = open("./connectivity_matrix/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
+    f = open("./connectivity_matrix_new/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
     for i in range(len(connectivity_matrix)):
         for j in range(len(connectivity_matrix[i])):
             if connectivity_matrix[i][j] == 1:
@@ -147,7 +173,7 @@ def save_topology(connectivity_matrix, links_charateristics, main_configurations
     f.close()
 
 def save_routes(routes, main_configurations, timestamp):
-    routes_log = open("./routing/"+main_configurations["constellation"]["operator"]+"/routes_"+timestamp+".txt", "a")
+    routes_log = open("./routing_new/"+main_configurations["constellation"]["operator"]+"/routes_"+timestamp+".txt", "a")
     for route in routes:
         current_route = route[0][:]
         routes_log.write(str(current_route)[1:-1] + "\n")

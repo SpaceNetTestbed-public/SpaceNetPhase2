@@ -457,10 +457,13 @@ def M_gs_sat_association_criteria_MaxAssociationTime(connectivity_matrix, ground
                 print "....... Current time = ", t.tt," GS#", gs["gid"], " is associated with SAT#", chosen_satellite[0]," which is named as ", chosen_satellite[1], ". The next uupdate time will be ", gs["next_update"]
                 connectivity_matrix[num_of_satellites+gs["gid"]][chosen_satellite[1]] = 1
                 connectivity_matrix[chosen_satellite[1]][num_of_satellites+gs["gid"]] = 1
+                gs["sat_re_LAC"] = chosen_satellite[1]
             else:
                 print gs["gid"], -1
         else:
             print "....... No updates = ", t.tt
+            connectivity_matrix[num_of_satellites+gs["gid"]][gs["sat_re_LAC"]] = 1
+            connectivity_matrix[gs["sat_re_LAC"]][num_of_satellites+gs["gid"]] = 1
             continue
 
     return connectivity_matrix

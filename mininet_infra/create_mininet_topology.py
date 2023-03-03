@@ -132,7 +132,8 @@ class sat_network(Topo):
             # gs_name = self.addHost('gs'+str(i))
             # gs_list.append(gs_name)
 
-        connectivity_matrix_temp = connectivity_matrix[:]
+        # connectivity_matrix_temp = connectivity_matrix[:]
+        connectivity_matrix_temp = [row[:] for row in connectivity_matrix]
         for i in range(0,len(connectivity_matrix_temp)):
             for j in range(0, len(connectivity_matrix_temp[i])):
 
@@ -622,3 +623,66 @@ class sat_network(Topo):
             sat_node.cmd(pkill_command)
 
             # sat_node.cmd("python ../comm_protocol/config_gs_sat_table.py "+"sat"+str(i)+" &")
+
+    def find_orbits(self, satname):
+        absolute_path = "/home/mininet/simulator/SimLEO_MConstellations/results/starlink/"
+        orbits_sats = open(absolute_path+'orbits_satellites.txt', 'r')
+        Lines_orbits_sats = orbits_sats.readlines()
+
+        for line in Lines_orbits_sats:
+            satinfo = line.split("\t")
+            if "sat"+str(satinfo[1].strip()) == satname:
+                return satinfo[0]
+
+        return -1
+
+    def get_gw_sat_ip(self, satname, gw):
+        absolute_path = "/home/mininet/simulator/SimLEO_MConstellations/results/starlink/"
+        ip_files = open(absolute_path+'constellation_ip_assignment.txt', 'r')
+        Lines = ip_files.readlines()
+
+        links_file = open(absolute_path+'links.txt', 'r')
+        Lines_links = links_file.readlines()
+
+        interface_gw  = ""
+        for line in Lines_links:
+            two_endpoints = line.split(":")
+            # print two_endpoints
+            if (satname+str("-") in two_endpoints[0].strip() and gw+str("-") in two_endpoints[1].strip()):
+                interface_gw = two_endpoints[1].strip()
+            elif (satname+str("-") in two_endpoints[1].strip() and gw+str("-") in two_endpoints[0].strip()):
+                interface_gw = two_endpoints[0].strip()
+
+        for line in Lines:
+            sat_interface = line.split("\t")
+            if interface_gw == str(sat_interface[0]):
+                interface_ip = sat_interface[1].strip()
+                return interface_ip
+
+
+    def startRoutingOSPF(self, data_path, net, satellites):
+        for i in range(0, len(satellites)):
+            sat_node = net.getNodeByName("sat"+str(i))
+            sat_node.cmd("/usr/sbin/zebra -f /home/mininet/simulator/SimLEO_MConstellations/results/starlink/ospf_config/zebra-%s.conf -d -i /tmp/zebra-%s.pid > /home/mininet/simulator/SimLEO_MConstellations/results/starlink/logs/%s-zebra-stdout 2>&1" % (sat_node.name, sat_node.name, sat_node.name))
+            sat_node.waitOutput()
+            sat_node.cmd("/usr/sbin/ospfd -f /home/mininet/simulator/SimLEO_MConstellations/results/starlink/ospf_config/ospf-%s.conf -d -i /tmp/ospfd-%s.pid > /home/mininet/simulator/SimLEO_MConstellations/results/starlink/logs/%s-ospfd-stdout 2>&1" % (sat_node.name, sat_node.name, sat_node.name), shell=True)
+            sat_node.waitOutput()
+            print sat_node.name
+
+        # areas_0 = [0, 27, 52, 65, 101, 120, 129, 164, 167, 195, 210, 225, 247, 274, 301, 307, 335, 352, 395, 410, 421, 452, 469, 483, 511, 537, 554, 563, 584, 616, 632, 651, 665, 697, 716, 719, 746, 772, 799, 800, 821, 857, 862, 888, 900, 930, 942, 970, 980, 1000, 1026, 1040, 1060, 1081, 1103, 1123, 1159, 1173, 1205, 1227, 1241, 1268, 1276, 1301, 1315, 1353, 1360, 1386, 1415, 1439, 1454, 1481]
+        # for i in range(0, len(satellites)):
+        #     sat_gw = ""
+        #     sat_node = net.getNodeByName("sat"+str(i))
+        #     current_orbit = self.find_orbits(sat_node.name)
+        #     for val in range(len(areas_0)):
+        #         # print "sat"+str(areas_0[val])
+        #         orid = self.find_orbits("sat"+str(areas_0[val]))
+        #         if current_orbit == orid:
+        #             sat_gw = "sat"+str(areas_0[val])
+        #             print sat_gw, sat_node.name, orid
+        #
+        #             break
+        #
+        #     interface_gw_ip = self.get_gw_sat_ip(sat_node.name, sat_gw)
+        #     print interface_gw_ip, sat_node.name, sat_gw
+            # log("Starting zebra and ospfd on %s" % sat_node.name)

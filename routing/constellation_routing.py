@@ -117,6 +117,28 @@ def initial_routing_v2(satellites, ground_stations, connectivity_matrix, latency
 
     return static_routes
 
+def update_routing_v2(satellites, ground_stations, connectivity_matrix, latency, p, q):
+    mega_constellation_graph = nx.Graph()
+    for n in range(len(satellites)+len(ground_stations)):
+        mega_constellation_graph.add_node(n)        # nodes where n > len(satellites) are ground stations
+
+    for i in range(len(connectivity_matrix)):
+        for j in range(len(connectivity_matrix[i])):
+            if connectivity_matrix[i][j] == 1:
+                # print i,j
+                mega_constellation_graph.add_edge(i, j, weight=1) #latency[i][j] - starlink, 1 - hopcount oneweb
+
+    static_routing_list_args = []
+    static_routing_list_args.append((mega_constellation_graph, p, q))
+
+    # print mega_constellation_graph.edges.data()
+    pool = Pool(20)
+    static_routes = pool.map(static_routing_worker, static_routing_list_args)
+    pool.close()
+    pool.join()
+
+    return static_routes
+
 def static_routing_worker(args):
     (
         Gr,
