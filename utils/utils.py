@@ -164,7 +164,7 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     }
 
 def save_topology(connectivity_matrix, links_charateristics, main_configurations, timestamp):
-    f = open("./connectivity_matrix_new/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
+    f = open("./connectivity_matrix/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
     for i in range(len(connectivity_matrix)):
         for j in range(len(connectivity_matrix[i])):
             if connectivity_matrix[i][j] == 1:
@@ -173,7 +173,7 @@ def save_topology(connectivity_matrix, links_charateristics, main_configurations
     f.close()
 
 def save_routes(routes, main_configurations, timestamp):
-    routes_log = open("./routing_new/"+main_configurations["constellation"]["operator"]+"/routes_"+timestamp+".txt", "a")
+    routes_log = open("./routing/"+main_configurations["constellation"]["operator"]+"/routes_"+timestamp+".txt", "a")
     for route in routes:
         current_route = route[0][:]
         routes_log.write(str(current_route)[1:-1] + "\n")

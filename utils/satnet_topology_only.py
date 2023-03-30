@@ -15,12 +15,12 @@ from routing.constellation_routing import *
 
 def main():
     # 1 - Read configurations
-    main_configurations = parse_config_file_yml(".","../controller/starlink_config.yml")
+    main_configurations = parse_config_file_yml(".","../controller/oneweb_config.yml")
 
     # 2 - Get current time
     ts = load.timescale()
     inc = 0
-    time_resolution_in_seconds = 10
+    time_resolution_in_seconds = 1
     y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
     time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     time_timestamp = convert_time_utc_to_unix(time_utc)
@@ -98,23 +98,23 @@ def main():
         connectivity_matrix = mininet_add_GSLs_parallel(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 20, main_configurations["constellation"]["topology"]["association_criteria_GSL"], time_utc_inc, main_configurations)
         links_charateristics = calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, time_utc_inc)
 
-        # save_topology(connectivity_matrix, links_charateristics, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(sec))
+        save_topology(connectivity_matrix, links_charateristics, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(sec))
         end = round(time.time()*1000)
         if main_configurations["simulation"]["debug"] == 1:
             print ".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs"
 
 
-        topology_changes = check_changes_in_topology(old_connectivity_matrix, connectivity_matrix)
-        gsl_changes = 0
-        isl_changes = 0
-        for tp_change in topology_changes:
-           if tp_change[0] >= num_of_satellites or  tp_change[1] >= num_of_satellites:
-               gsl_changes += 1
-           else:
-               isl_changes +=1
-
-        print ".......... changes at ", time_utc_inc.utc_strftime(), len(topology_changes), gsl_changes, isl_changes
-        print len(topology_changes), gsl_changes, isl_changes
-        old_connectivity_matrix = connectivity_matrix[:]
+        # topology_changes = check_changes_in_topology(old_connectivity_matrix, connectivity_matrix)
+        # gsl_changes = 0
+        # isl_changes = 0
+        # for tp_change in topology_changes:
+        #    if tp_change[0] >= num_of_satellites or  tp_change[1] >= num_of_satellites:
+        #        gsl_changes += 1
+        #    else:
+        #        isl_changes +=1
+        #
+        # print ".......... changes at ", time_utc_inc.utc_strftime(), len(topology_changes), gsl_changes, isl_changes
+        # print len(topology_changes), gsl_changes, isl_changes
+        # old_connectivity_matrix = connectivity_matrix[:]
 
 main()

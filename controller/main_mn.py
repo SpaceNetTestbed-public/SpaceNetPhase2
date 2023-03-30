@@ -169,19 +169,19 @@ def main():
                 print "------------------------------------------------------------------"
                 print "..... Pre-compute Routing Tables Phase:"
 
-            # # #############  Disable this for dynamic routing
-            # # start = round(time.time()*1000)
-            # # TopologyRoutes          = parse_topology_routes(main_configurations["data_n_results"]["routing"], num_of_satellites, time_utc_inc)
-            # # end  = round(time.time()*1000)
-            #
-            # if TopologyRoutes == -1:
-            #     print ("[Error] Check the parse_topology_routes function")
-            #     exit()
-            #
-            # if main_configurations["simulation"]["debug"] == 1:
-            #     in_sec = (end-start)/1000.0
-            #     print ".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
-            #     print ".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(TopologyRoutes["All_PreConfigured_routes"]), "routes"
+            #############  Disable this for dynamic routing
+            start = round(time.time()*1000)
+            TopologyRoutes          = parse_topology_routes(main_configurations["data_n_results"]["routing"], num_of_satellites, time_utc_inc)
+            end  = round(time.time()*1000)
+
+            if TopologyRoutes == -1:
+                print ("[Error] Check the parse_topology_routes function")
+                exit()
+
+            if main_configurations["simulation"]["debug"] == 1:
+                in_sec = (end-start)/1000.0
+                print ".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+                print ".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(TopologyRoutes["All_PreConfigured_routes"]), "routes"
 
             if main_configurations["simulation"]["debug"] == 1:
                 print "------------------------------------------------------------------"
@@ -220,59 +220,59 @@ def main():
             # print satnat_topology_change["connectivity_matrix"]
             # exit()
 
-            # # #############  Disable this for dynamic routing
-            # # start = round(time.time()*1000)
-            # # prepare_routing_config_commands(topology, main_configurations["data_n_results"]["simulation_results"], TopologyRoutes["All_PreConfigured_routes"], links_hash, list_of_Intf_IPs, satellites_by_index, 20);
-            # # end  = round(time.time()*1000)
-            # # if main_configurations["simulation"]["debug"] == 1:
-            # #     print ".......... Generateing the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
-            #
-            # if main_configurations["simulation"]["debug"] == 1:
-            #     print "------------------------------------------------------------------"
-            #     print "..... Compute Ground Stations Routing Phase:"
-            #
-            # start = round(time.time()*1000)
-            # gs_routing(main_configurations["data_n_results"]["simulation_results"], gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations, main_configurations["constellation"]["routing"]["border_gateway"])
-            # end = round(time.time()*1000)
-            #
-            # if main_configurations["simulation"]["debug"] == 1:
-            #     print ".......... Ground Stations Routes for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
-            os.system('python ../results/starlink/generate_ospf_config.py')
-            topology.startRoutingOSPF(main_configurations["data_n_results"]["simulation_results"], net, satellites_by_index)
-            CLI(net)
-    	    net.stop()
+            #############  Disable this for dynamic routing
+            start = round(time.time()*1000)
+            prepare_routing_config_commands(topology, main_configurations["data_n_results"]["simulation_results"], TopologyRoutes["All_PreConfigured_routes"], links_hash, list_of_Intf_IPs, satellites_by_index, 20);
+            end  = round(time.time()*1000)
+            if main_configurations["simulation"]["debug"] == 1:
+                print ".......... Generateing the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print "------------------------------------------------------------------"
+                print "..... Compute Ground Stations Routing Phase:"
+
+            start = round(time.time()*1000)
+            gs_routing(main_configurations["data_n_results"]["simulation_results"], gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations, main_configurations["constellation"]["routing"]["border_gateway"])
+            end = round(time.time()*1000)
+
+            if main_configurations["simulation"]["debug"] == 1:
+                print ".......... Ground Stations Routes for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+            # os.system('python ../results/starlink/generate_ospf_config.py')
+            # topology.startRoutingOSPF(main_configurations["data_n_results"]["simulation_results"], net, satellites_by_index)
+            # CLI(net)
+    	    # net.stop()
             if main_configurations["simulation"]["debug"] == 1:
                 print "------------------------------------------------------------------"
                 print "..... Deploy the IP Route Commands on Mininet VMs Phase:"
 
 
-            # RE stands for Resiliency Experiment
-            sat_id = check_time_to_deploy_RE(resiliency_satellite_timestamp, year, month, day, hour, minute, float(second)+increments)
-
-            # connectivity_matrix_tmp_RE = satnat_topology_change["connectivity_matrix"][:]
-            # deploy_RE(id, satnat_topology_change["connectivity_matrix"], TopologyRoutes["All_PreConfigured_routes"])
-            change_routes = []
-            for id in sat_id:
-                for i in range(len(satnat_topology_change["connectivity_matrix"][int(id)])):
-                    if satnat_topology_change["connectivity_matrix"][int(id)][i] == 1:
-                        print "connectivity", i, satnat_topology_change["connectivity_matrix"][int(id)][i]
-                        print "latency     ", i, satnat_topology_change["links_latency"][int(id)][i]
-                        satnat_topology_change["connectivity_matrix"][int(id)][i] = 0
-                        satnat_topology_change["connectivity_matrix"][i][int(id)] = 0
-
-                for routes in TopologyRoutes["All_PreConfigured_routes"]:
-                    if int(id) in routes[0]:
-                        index_ = routes[0].index(int(id))
-                        if int(index_) != 0 and int(index_) < (len(routes[0])-1):
-                            if (routes[0][index_-1], routes[0][index_+1]) not in change_routes:
-                                change_routes.append((routes[0][index_-1], routes[0][index_+1]))
-                                print routes[0][index_-1], routes[0][index_+1]
-                                new_route = update_routing_v2(satellites_by_index, ground_stations, satnat_topology_change["connectivity_matrix"], satnat_topology_change["links_latency"], int((routes[0][index_-1])), int((routes[0][index_+1])))
-                                print "---->",routes[0]
-                                print "++++>",new_route
-
-            print change_routes
-            exit()
+            # # RE stands for Resiliency Experiment
+            # sat_id = check_time_to_deploy_RE(resiliency_satellite_timestamp, year, month, day, hour, minute, float(second)+increments)
+            #
+            # # connectivity_matrix_tmp_RE = satnat_topology_change["connectivity_matrix"][:]
+            # # deploy_RE(id, satnat_topology_change["connectivity_matrix"], TopologyRoutes["All_PreConfigured_routes"])
+            # change_routes = []
+            # for id in sat_id:
+            #     for i in range(len(satnat_topology_change["connectivity_matrix"][int(id)])):
+            #         if satnat_topology_change["connectivity_matrix"][int(id)][i] == 1:
+            #             print "connectivity", i, satnat_topology_change["connectivity_matrix"][int(id)][i]
+            #             print "latency     ", i, satnat_topology_change["links_latency"][int(id)][i]
+            #             satnat_topology_change["connectivity_matrix"][int(id)][i] = 0
+            #             satnat_topology_change["connectivity_matrix"][i][int(id)] = 0
+            #
+            #     for routes in TopologyRoutes["All_PreConfigured_routes"]:
+            #         if int(id) in routes[0]:
+            #             index_ = routes[0].index(int(id))
+            #             if int(index_) != 0 and int(index_) < (len(routes[0])-1):
+            #                 if (routes[0][index_-1], routes[0][index_+1]) not in change_routes:
+            #                     change_routes.append((routes[0][index_-1], routes[0][index_+1]))
+            #                     print routes[0][index_-1], routes[0][index_+1]
+            #                     new_route = update_routing_v2(satellites_by_index, ground_stations, satnat_topology_change["connectivity_matrix"], satnat_topology_change["links_latency"], int((routes[0][index_-1])), int((routes[0][index_+1])))
+            #                     print "---->",routes[0]
+            #                     print "++++>",new_route
+            #
+            # print change_routes
+            # exit()
 
             start = round(time.time()*1000)
             topology.startRoutingConfigV2(main_configurations["data_n_results"]["simulation_results"], net, satellites_by_index, ground_stations, topg["management_interface"])
@@ -281,8 +281,8 @@ def main():
                 print "......... Deploy the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
 
             net = run_application(main_configurations["data_n_results"]["simulation_results"], net, main_configurations, list_of_Intf_IPs)
-	    #CLI(net)
-	    #net.stop()
+    	    CLI(net)
+    	    net.stop()
 	    #exit()
         else:
             topology_changes                = check_changes_in_topology(old_connectivity_matrix, satnat_topology_change["connectivity_matrix"])

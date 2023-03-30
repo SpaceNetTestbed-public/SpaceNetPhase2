@@ -609,7 +609,7 @@ class sat_network(Topo):
             sat_node.cmd("chmod +x "+data_path+"/cmd_files/sat"+str(i)+"_routes.sh && ./"+data_path+"/cmd_files/sat"+str(i)+"_routes.sh &")
             patch_counter -= 1
             if patch_counter == 0:
-                time.sleep(5)
+                time.sleep(8)
                 patch_counter = 10
             if i%100 == 0:
                 print ".......... Configure the routing tables of satellites", i, "-", (counter*100)
