@@ -172,7 +172,7 @@ def read_text_file(
 
 
 # ----------------------------------------------------- #
-# FUNCTION 4 : COMPUTE MEAN AND SAMPLE STD. DEV.        #
+# FUNCTION 4 : COMPUTE MEAN AND STD. DEV. 	        #
 # ----------------------------------------------------- #
 def compute_mean_and_stddev(
                                 path_to_text_file,
@@ -181,7 +181,7 @@ def compute_mean_and_stddev(
                                 num_workers
                            ):
     """
-    Reads a text file and extracts the contents into a usable list.
+    Computes mean and sample/population standard deviation of the dataset.
 
     Args:
         path_to_text_file (str):    Text file's location
