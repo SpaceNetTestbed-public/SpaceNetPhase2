@@ -152,7 +152,7 @@ def find_adjacent_orbit_sat(current_plane, current_sat, adj_plane, satellites_so
             min_distance = distance
             nearest_sat_in_adj_plane = adj_plane_sats[i]
 
-    # print current_sat, min_distance, nearest_sat_in_adj_plane.name.split(" ")[0]
+    print current_sat, min_distance, nearest_sat_in_adj_plane.name.split(" ")[0]
     return nearest_sat_in_adj_plane.name.split(" ")[0]
 
 def find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, current_plane, current_sat, adj_plane, satellites_sorted_in_orbits, satellites_by_name, t):

@@ -1,0 +1,5 @@
+mean_and_stddev:
+    data_file:  iperf_27oct_NYtoLondon.txt
+    input_dir:  None
+    test_type:  iperf
+    threads:    2

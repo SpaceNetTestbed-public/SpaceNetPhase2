@@ -22,18 +22,18 @@ ground_stations:
     gs_file: ../mobility/ground_stations_experiments.txt
 
 simulation:
-    start_time: 2023,03,13,13,0,0
+    start_time: 2022,11,24,14,0,0
     length: 30
     step: 1
     debug: 1
 
 application:
     type: ping
-    source: gs5
-    destination: gs0
+    source: gs9
+    destination: gs27
     duration: 30
     congestion_control: cubic
-    result_out: ../results/starlink/ping_TokyoNYC_3_13_2023_30_Sec
+    result_out: ../results/starlink/ping_NYC2London_11_24
     background_traffic: no
     tcpdump: no
 
@@ -44,6 +44,6 @@ resiliency:
   e_timestamps: ["2022,12,30,14,1,20", "2022,12,30,14,1,20"]
 
 data_n_results:
-    connectivity_matrix: ../utils/connectivity_matrix/starlink/
-    routing: ../utils/routing/starlink/
+    connectivity_matrix: ../utils/connectivity_matrix_new/starlink/
+    routing: ../utils/routing_new/starlink/
     simulation_results: ../results/starlink

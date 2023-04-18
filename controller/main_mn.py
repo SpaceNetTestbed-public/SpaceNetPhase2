@@ -281,8 +281,8 @@ def main():
                 print "......... Deploy the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
 
             net = run_application(main_configurations["data_n_results"]["simulation_results"], net, main_configurations, list_of_Intf_IPs)
-    	    CLI(net)
-    	    net.stop()
+    	    #CLI(net)
+    	    #net.stop()
 	    #exit()
         else:
             topology_changes                = check_changes_in_topology(old_connectivity_matrix, satnat_topology_change["connectivity_matrix"])
