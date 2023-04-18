@@ -59,9 +59,9 @@ def check_unit_scaling(
     elif unit in iperf_base_units:
         return 1e-6 * np.float64(data)  # Scaled by 1/1000000
     elif unit in ping_base_units:
-        return 1e4 * np.float64(data)   # Scaled by 1000
+        return 1e3 * np.float64(data)   # Scaled by 1000
     elif unit in iperf_other_unit:
-        return 1e4 * np.float64(data)   # Scaled by 1000
+        return 1e3 * np.float64(data)   # Scaled by 1000
 
 
 # ----------------------------------------------------- #
@@ -75,7 +75,7 @@ def separate_content_by_test(
                             ):
     """
     Separates the contents based on the format of results from the network testing procedure, 
-    e.g., ping or iPerf, and outputs it as a list.
+    e.g., ping or iPerf, and outputs it as an NumPy array or NumPy 64-bit float.
 
     Args:
         file_line (str):    Line of string from file
@@ -114,7 +114,7 @@ def separate_content_by_test(
             ref_indx = words.index('from')
 
             # Return data
-            return np.float64(check_unit_scaling(list(map(float, re.findall(r'\d+\.\d+', words[ref_indx+4])))[0], words[ref_indx+5]))
+            return check_unit_scaling(list(map(float, re.findall(r'\d+\.\d+', words[ref_indx+4])))[0], words[ref_indx+5])
     
 
 # ----------------------------------------------------- #
