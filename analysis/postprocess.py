@@ -46,22 +46,24 @@ def check_unit_scaling(
     # Define reference units to scale from
     ref_units = ['MBytes', 'Mbits/sec', 'ms']
 
-    # Base units
-    iperf_base_units = ['Bytes', 'bits/sec']
-    ping_base_units = ['s']
+    # x1/100000 unit
+    times_oneover1M_unit = ['Bytes', 'bits/sec']
 
-    # Other units
-    iperf_other_unit = ['GBytes']
+    # x1000 unit
+    times_1K_unit = ['GBytes', 's']
+
+    # x1/1000 unit
+    times_oneover1K_unit = ['KBytes']
 
     # Check unit and then scale
     if unit in ref_units:
         return np.float64(data)         # Already at ref unit
-    elif unit in iperf_base_units:
+    elif unit in times_oneover1M_unit:
         return 1e-6 * np.float64(data)  # Scaled by 1/1000000
-    elif unit in ping_base_units:
+    elif unit in times_1K_unit:
         return 1e3 * np.float64(data)   # Scaled by 1000
-    elif unit in iperf_other_unit:
-        return 1e3 * np.float64(data)   # Scaled by 1000
+    elif unit in times_oneover1K_unit:
+        return 1e-3 * np.float64(data)  # Scaled by 1/1000
 
 
 # ----------------------------------------------------- #

@@ -1,5 +1,5 @@
 mean_and_stddev:
-    data_file:  iperf_27oct_NYtoLondon.txt
+    data_file:  iperf_Longest_Association_GRID_GS0_GS8
     input_dir:  None
     test_type:  iperf
     threads:    2
