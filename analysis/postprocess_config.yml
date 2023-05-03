@@ -1,5 +1,7 @@
 mean_and_stddev:
     data_file:  iperf_Longest_Association_GRID_GS0_GS8
-    input_dir:  None
     test_type:  iperf
+    input_dir:  analysis/
+    output_dir: analysis/plots/
+    save_plot:  True
     threads:    2

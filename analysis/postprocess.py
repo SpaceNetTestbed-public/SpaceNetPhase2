@@ -18,7 +18,8 @@ import os
 import numpy as np
 import yaml
 import re
-from concurrent.futures import ThreadPoolExecutor
+import matplotlib.pyplot as plt
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
 
 # =================================================================================== #
@@ -142,7 +143,7 @@ def read_text_file(
     Returns:
         list:   Text file contents that are extracted into a list of quantities     
     """
-
+ 
     # Check if a file directory is given and real
     if path_to_text_file and os.path.exists(path_to_text_file) or os.path.exists(os.path.join(input_dir, path_to_text_file)):
 
@@ -174,7 +175,7 @@ def read_text_file(
 
 
 # ----------------------------------------------------- #
-# FUNCTION 4 : COMPUTE MEAN AND STD. DEV. 	        #
+# FUNCTION 4 : COMPUTE MEAN AND STD. DEV. 	            #
 # ----------------------------------------------------- #
 def compute_mean_and_stddev(
                                 path_to_text_file,
@@ -206,6 +207,103 @@ def compute_mean_and_stddev(
         return [np.mean(dataset, axis=0), np.std(dataset, ddof=1, axis=0), np.std(dataset, axis=0)]
     elif test_type == 'ping':
         return [np.mean(dataset), np.std(dataset, ddof=1), np.std(dataset)]
+    
+
+# ----------------------------------------------------- #
+# FUNCTION 5 : PLOT PING/IPERF PER TIME SEQ. 	        #
+# ----------------------------------------------------- #
+def plot_network_utility_results(
+                                path_to_text_file,
+                                input_dir,
+                                output_dir,
+                                test_type,
+                                num_workers,
+                                save_plt
+                           ):
+    """
+    Computes mean and sample/population standard deviation of the dataset.
+
+    Args:
+        path_to_text_file (str):    Text file's location
+        input_dir (str):            Specific directory the file is located in
+        output_dir (str):           Specific directory to output the saved figure
+        test_type (str):            The specific test used to produce the results,
+                                        > iPerf - 'iperf'
+                                        > Ping  - 'ping'
+        num_workers (int):          Number of threads to utilize
+        save_plt (bool):            Whether to save the plot as a file
+
+    Returns:
+        Matplotlib figure
+    """
+
+    # Read and extract contents from file
+    dataset = read_text_file(path_to_text_file=path_to_text_file, input_dir=input_dir,
+                             test_type=test_type, num_workers=num_workers)
+    
+    # Simulation configuration file
+    sim_config_file = yaml.safe_load(open('controller/starlink_config.yml', 'r'))
+
+    # Determine the timestep of simulation
+    ts = np.float64(sim_config_file['simulation']['step'])
+
+    # Plot the data
+    if test_type == "iperf":
+
+        # Extract dataset to plot
+        bandwidth_data = dataset[:, 1]
+
+        # Generate time array
+        time_array = [i * ts for i in range(int(len(bandwidth_data)/ts))]
+
+        # Plot the points
+        plt.scatter(time_array, bandwidth_data, color='black')
+
+        # Plot the data as connected dots
+        plt.plot(time_array, bandwidth_data, color='black', linewidth=0.75)
+
+        # Plot title
+        plt.title("IPerf3 Test: " + sim_config_file['application']['source'] + "-" + sim_config_file['application']['destination'] + " (" + sim_config_file['constellation']['operator'] + ")")
+
+        # Axis labels
+        plt.xlabel('Time (s)')
+        plt.ylabel('Bandwidth (Mbps)')
+
+        # Limit x-axis to start at 0
+        plt.xlim(0, time_array[-1])
+
+
+    elif test_type == "ping":
+
+        # Extract dataset to plot
+        latency_data = dataset[:, 0]
+
+        # Generate x-axis data
+        seq_array = [i for i in range(len(latency_data))]
+
+        # Plot the points
+        plt.scatter(seq_array, latency_data, color='black')
+
+        # Plot the data as connected dots
+        plt.plot(seq_array, latency_data, color='black', linewidth=0.75)
+
+        # Plot title
+        plt.title("Ping Test: " + sim_config_file['application']['source'] + "-" + sim_config_file['application']['destination'] + " (" + sim_config_file['constellation']['operator'] + ")")
+
+        # Axis labels
+        plt.xlabel('ICMP Sequence Number')
+        plt.ylabel('Latency (ms)')
+
+        # Limit x-axis to start at 0
+        plt.xlim(0, seq_array[-1])
+
+
+    # If saving plot, then don't display
+    if save_plt:
+        plt.savefig(output_dir + test_type+'_'+sim_config_file['application']['source']+'_'+sim_config_file['application']['destination']+'_'+str(sim_config_file['simulation']['length'])+'.png')
+    else:
+        plt.show()
+    
 
 
 # =================================================================================== #
@@ -216,10 +314,10 @@ if __name__ == "__main__":
 
 
     # Read config file
-    if os.path.exists('postprocess_config.yml'):
-        with open('postprocess_config.yml', 'r') as config_file:
+    if os.path.exists('analysis/postprocess_config.yml'):
+        with open('analysis/postprocess_config.yml', 'r') as config_file:
             config_data = yaml.safe_load(config_file)
-
+   
     # Mean and standard deviation
     if config_data['mean_and_stddev']:
         
@@ -229,6 +327,11 @@ if __name__ == "__main__":
         # Compute mean and std. dev.
         result = compute_mean_and_stddev(path_to_text_file=mstd_key['data_file'], input_dir=mstd_key['input_dir'], 
                                          test_type=mstd_key['test_type'], num_workers=int(mstd_key['threads']))
+        
+        # Plot the results
+        plot = plot_network_utility_results(path_to_text_file=mstd_key['data_file'], input_dir=mstd_key['input_dir'], 
+                                            output_dir=mstd_key['output_dir'], test_type=mstd_key['test_type'], 
+                                            num_workers=int(mstd_key['threads']), save_plt=mstd_key['save_plot'])
         
         # Print results
         #os.system('clear')
