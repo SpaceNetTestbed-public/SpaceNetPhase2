@@ -3,5 +3,5 @@ mean_and_stddev:
     test_type:  iperf
     input_dir:  analysis/
     output_dir: analysis/plots/
-    save_plot:  True
+    save_plot:  False
     threads:    2

@@ -242,7 +242,7 @@ def plot_network_utility_results(
                              test_type=test_type, num_workers=num_workers)
     
     # Simulation configuration file
-    sim_config_file = yaml.safe_load(open('controller/starlink_config.yml', 'r'))
+    sim_config_file = yaml.safe_load(open('../controller/starlink_config.yml', 'r'))
 
     # Determine the timestep of simulation
     ts = np.float64(sim_config_file['simulation']['step'])
@@ -314,8 +314,8 @@ if __name__ == "__main__":
 
 
     # Read config file
-    if os.path.exists('analysis/postprocess_config.yml'):
-        with open('analysis/postprocess_config.yml', 'r') as config_file:
+    if os.path.exists('../analysis/postprocess_config.yml'):
+        with open('../analysis/postprocess_config.yml', 'r') as config_file:
             config_data = yaml.safe_load(config_file)
    
     # Mean and standard deviation
