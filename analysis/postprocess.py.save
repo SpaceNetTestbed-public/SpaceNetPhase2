@@ -156,8 +156,9 @@ def read_text_file(
         with open(path_to_text_file if os.path.exists(path_to_text_file) else os.path.join(input_dir, path_to_text_file), 'r') as file:
 
             # Length of file
-            num_lines = len(open(path_to_text_file if os.path.exists(path_to_text_file) else os.path.join(input_dir, path_to_text_file), 'r').readlines())
-           
+            
+num_lines = len(open(path_to_text_file if os.path.exists(path_to_text_file) else os.path.join(input_dir, path_to_text_file), 'r').readlines())
+
             # Create Thread pool
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
 

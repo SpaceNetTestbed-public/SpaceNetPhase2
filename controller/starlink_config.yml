@@ -33,7 +33,7 @@ application:
     destination: gs5
     duration: 300
     congestion_control: cubic
-    result_out: ../results/starlink/iperf_Longest_Association_GRID_GS5_GS12
+    result_out: ../analysis/iperf_Longest_Association_GRID_GS5_GS12
     background_traffic: no
     tcpdump: no
 
