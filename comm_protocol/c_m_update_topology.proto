@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message c_m_update_topology {
+	optional string command = 1;
+	optional string node1_name = 2;
+	optional string node2_name = 3;
+}

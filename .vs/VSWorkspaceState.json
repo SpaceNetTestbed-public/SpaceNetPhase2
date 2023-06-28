@@ -1,0 +1,13 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\apps",
+    "\\controller",
+    "\\link",
+    "\\mininet_infra",
+    "\\mobility",
+    "\\routing"
+  ],
+  "SelectedNode": "\\apps\\use_case1.py",
+  "PreviewInSolutionExplorer": false
+}
