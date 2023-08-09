@@ -119,7 +119,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
                 # print write_this
     f.close()
     # Update the satellite_by_index
-    absolute_path = "/home/mininet/simulator/SimLEO_MConstellations/results/starlink/"
+    absolute_path = "/home/mininet/simulator/constellation-simulator-main/results/starlink/"
     file = open(absolute_path+"orbits_satellites.txt", 'w')
     sat_index = -1
     orbit_id = 0

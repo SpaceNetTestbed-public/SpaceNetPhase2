@@ -137,7 +137,7 @@ def main():
         print "------------------------------------------------------------------"
 
     sim_timeCount = main_configurations["simulation"]["length"]
-
+ 
     while sim_timeCount >= 1:
         loopStart = round(time.time()*1000)
         increments += main_configurations["simulation"]["step"]
@@ -201,7 +201,7 @@ def main():
                 print "------------------------------------------------------------------"
                 print "..... Generate IP Route Linux Commands Phase: "
 
-            absolute_path = "/home/mininet/simulator/SimLEO_MConstellations/results/starlink/"
+            absolute_path = "/home/mininet/simulator/constellation-simulator-main/results/starlink/"
             file = open(absolute_path+"links.txt", 'w')
 
             links_hash              = {}
