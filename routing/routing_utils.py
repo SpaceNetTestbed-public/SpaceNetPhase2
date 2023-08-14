@@ -6,7 +6,7 @@ import numpy as np
 import datetime
 
 import threading
-import Queue
+import queue
 from copy import copy, deepcopy
 
 import networkx as nx
@@ -66,7 +66,7 @@ def assign_ips_for_constellation(links, addresses_pool):
            list_of_Intf_IPs.append({"Interface": linkIntf1, "IP": oct1+"."+oct2+"."+oct3+"."+str(int(oct4)+1)+"/28"})
            list_of_Intf_IPs.append({"Interface": linkIntf2, "IP": oct1+"."+oct2+"."+oct3+"."+str(int(oct4)+2)+"/28"})
         else:
-           print "[Create Sat Network -- GSL] No Available IPs to assign"
+           print("[Create Sat Network -- GSL] No Available IPs to assign")
     return list_of_Intf_IPs
 
 def get_link_intfs_ips(node1, node2, links, list_of_Intf_IPs):
@@ -77,7 +77,7 @@ def get_link_intfs_ips(node1, node2, links, list_of_Intf_IPs):
             n1n2Link = link
             break
 
-    print n1n2Link
+    print(n1n2Link)
     linkIntf1, linkIntf2 = n1n2Link.split(":")
     # print linkIntf1, linkIntf2
     for intf_IP in list_of_Intf_IPs:

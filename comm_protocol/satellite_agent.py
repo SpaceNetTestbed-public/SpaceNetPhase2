@@ -5,11 +5,11 @@ import threading
 import os
 import sys
 # sys.path.append('../templates')
-import control_mgs_pb2 as ControlMsg
+from . import control_mgs_pb2 as ControlMsg
 
 
 def connection_establishment(a_mgnt_IP, a_mgnt_port):
-    print a_mgnt_IP
+    print(a_mgnt_IP)
     UDPSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     UDPSocket.bind((a_mgnt_IP, a_mgnt_port))
     # print("The Agent is up and listening")
@@ -65,7 +65,7 @@ def main():
         # print bytesAddressPair
         recv_msg = ControlMsg.control_msg()
         recv_msg.ParseFromString(bytesAddressPair[0])
-        print "Received "+recv_msg.cmd+" for "+recv_msg.cmd_receiver
+        print("Received "+recv_msg.cmd+" for "+recv_msg.cmd_receiver)
         t = threading.Thread(target=check_message, args=(recv_msg.cmd_receiver, recv_msg.cmd_param, recv_msg.cmd))
     	t.start()
 

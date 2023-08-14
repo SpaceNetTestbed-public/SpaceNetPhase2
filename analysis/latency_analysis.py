@@ -22,5 +22,5 @@ for line in lines:
 avgtime = np.mean(time)
 stdtime = np.std(time)
 
-print avgtime
-print stdtime
+print(avgtime)
+print(stdtime)

@@ -6,7 +6,7 @@ import numpy as np
 import datetime
 
 import threading
-import Queue
+import queue
 from copy import copy, deepcopy
 
 import networkx as nx
@@ -36,17 +36,17 @@ def main():
     planes = extract_planes("../mobility/starlink_tles_Nov.txt")
 
     cur_planes = planes["Planes"]
-    print len(planes["Unassigned"])
+    print(len(planes["Unassigned"]))
     ts = load.timescale()
     t = ts.now()
-    print t
+    print(t)
     # print cur_planes
     # print satellites_by_name
     sorted_planes = sort_satellites_within_plane(cur_planes, satellites_by_name, t)
 
     # Get the satellites in planes only, igonore the Unassigned satellites
     available_satellites = []
-    for key in sorted_planes.keys():
+    for key in list(sorted_planes.keys()):
         sats = ""
         for satellite in sorted_planes[key]:
             sats += str(satellites_by_name[str(satellite)].name).split("-")[1]+","

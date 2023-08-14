@@ -29,7 +29,7 @@ def handle_commands(cmd, cmd_params):
     	for p in cmd_params:
     		full_command.append(p)
 
-    print full_command
+    print(full_command)
     with open('log.txt', 'a') as f:
         process = subprocess.Popen(full_command, stdout=f)
 

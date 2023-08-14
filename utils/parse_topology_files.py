@@ -35,7 +35,7 @@ for gs in ground_stations:
         if times < datetime.datetime(2022,12,5,14,11,0):
             current_time = times
             time_diff = current_time - previous_time
-            print gs, current_time, previous_time, time_diff.total_seconds()
+            print(gs, current_time, previous_time, time_diff.total_seconds())
             previous_time = current_time
 
         # print timhere

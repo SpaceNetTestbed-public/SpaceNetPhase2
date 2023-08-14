@@ -95,7 +95,7 @@ def calc_gsl_snr(satellite, ground_station, t, distance, direction):
         weather_attenuation_ul = weather_attenuation_ul.value
         # print weather_attenuation
     else:
-        print "no weather data -- "
+        print("no weather data -- ")
         weather_attenuation_dl = itur.atmospheric_attenuation_slant_path(lat_gs, lon_gs, f_dl, el, p, D, return_contributions=True)
         weather_attenuation_dl = weather_attenuation_dl.value
         weather_attenuation_ul = itur.atmospheric_attenuation_slant_path(lat_gs, lon_gs, f_ul, el, p, D, return_contributions=True)

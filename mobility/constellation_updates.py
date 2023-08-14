@@ -11,9 +11,9 @@ def extract_starlink_shells(tle_filename, satelliteName):
     Lines = tle_file.readlines()
 
     for i in range(0,len(Lines),3):
-        tle_first_line = list(filter(None, Lines[i].strip("\n").split(" ")))[0]
+        tle_first_line = list([_f for _f in Lines[i].strip("\n").split(" ") if _f])[0]
         if satelliteName == tle_first_line:
-            tle_second_line = list(filter(None, Lines[i+2].strip("\n").split(" ")))
+            tle_second_line = list([_f for _f in Lines[i+2].strip("\n").split(" ") if _f])
 
             if float(tle_second_line[2]) < 53.2 and float(tle_second_line[2]) >= 53: #Inclination of Starlink shell 1 should be 53.0 degrees
                 return 1
@@ -44,14 +44,14 @@ def constellation_updates(tle_url, ground_stations, running_time):
 
     a = sorted(temp_list, key=lambda x: x[1])
     for aa in a:
-        print aa
+        print(aa)
 
 
 def main():
-    print "run this main .."
+    print("run this main ..")
     ts = load.timescale()
     actual_time = ts.now()
-    print actual_time.utc_strftime()
+    print(actual_time.utc_strftime())
     gs_Alan = {
         "gid": 0,
         "name": "Alan-Starlink",
@@ -81,6 +81,6 @@ def main():
         # print j,i
         t = ts.utc(int(2022), int(11), int(2), int(12), int(24), float(8)+j)
         constellation_updates("https://celestrak.org/NORAD/elements/supplemental/starlink.txt", ground_stations, t)
-        print "----------------------------------------------------------------------------------------"
+        print("----------------------------------------------------------------------------------------")
 
 main()

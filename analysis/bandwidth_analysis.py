@@ -43,5 +43,5 @@ stdtransfer = np.std(transfer)
 avgbandwidth = np.mean(bandwidth) #unit of Mbits/sec
 stdbandwidth = np.std(bandwidth)
 
-print avgbandwidth
-print stdbandwidth
+print(avgbandwidth)
+print(stdbandwidth)

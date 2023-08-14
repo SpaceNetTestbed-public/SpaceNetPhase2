@@ -40,7 +40,7 @@ def get_recent_TLEs_using_timestamp(path, timestamp, constellation):
             file_timesamp = int(filename.split("_")[1])
             if int(timestamp-file_timesamp) < timestamp_diff and int(timestamp-file_timesamp) > 0:
                 timestamp_diff = int(timestamp-file_timesamp)
-                print timestamp_diff, file_timesamp, timestamp
+                print(timestamp_diff, file_timesamp, timestamp)
                 recent_file = f
 
     return recent_file
@@ -93,7 +93,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
     timestamp = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     f = open(path+"satellites_orbits/"+main_configurations["constellation"]["operator"]+"/sorted_satellites_within_orbit_"+tle_timestamp+".txt", "a")
     if main_configurations["simulation"]["debug"] == 1:
-        print "..... Phase-1: Constellation Orbits:"
+        print("..... Phase-1: Constellation Orbits:")
 
     satellites_sorted_in_orbits = []        #carry satellites names according to STARLINK naming conversion (list of lists)
 
@@ -107,7 +107,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
                 cn +=1
 
         if main_configurations["simulation"]["debug"]==1:
-            print ".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites"
+            print(".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites")
 
         sorted = sort_satellites_in_orbit(satellites_in_orbit, timestamp)
         satellites_sorted_in_orbits.append(sorted)
@@ -152,9 +152,9 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
     if main_configurations["Debug"] == 1:
-        print "................................. Re Loading the new TLE files ..........................."
-        print ".......... total number of satellites = ", num_of_satellites
-        print ".......... total number of ground_stations = ", num_of_ground_stations
+        print("................................. Re Loading the new TLE files ...........................")
+        print(".......... total number of satellites = ", num_of_satellites)
+        print(".......... total number of ground_stations = ", num_of_ground_stations)
 
     return {"orbital_data": orbital_data,
             "satellites_by_name": satellites_by_name,
@@ -317,7 +317,7 @@ def merge_link_link_charateristics(latency_changes, capacity_changes):
 
 def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satellites, time_utc_inc):
     for change in topology_changes:
-        print change
+        print(change)
         node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
         node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
 
@@ -327,12 +327,12 @@ def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satell
         if change[2] == 1 and change[3] == 0:
             if net.linksBetween(net_node1, net_node2):
                 net.delLinkBetween(net_node1, net_node2)
-                print "[Info] the link between ", str(node1), "and", str(node2), "is deleted ..."
+                print("[Info] the link between ", str(node1), "and", str(node2), "is deleted ...")
             else:
-                print "[Error] the link does not exist ... check apply_updates_to_mininet function", str(node1), "--", str(node2)
+                print("[Error] the link does not exist ... check apply_updates_to_mininet function", str(node1), "--", str(node2))
 
     for change in topology_changes:
-        print change
+        print(change)
         node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
         node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
 
@@ -341,7 +341,7 @@ def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satell
 
         if change[2] == 0 and change[3] == 1:
             net.addLink(net_node1, net_node2, cls=TCLink)
-            print "[Info] the link between ", str(node1), "and", str(node2), "is added ..."
+            print("[Info] the link between ", str(node1), "and", str(node2), "is added ...")
 
     for i in range(0, num_of_satellites):
         sat_node = net.getNodeByName("sat"+str(i))
@@ -364,11 +364,11 @@ def apply_link_updates_to_mininet(net, latency_changes, capacity_changes, num_of
             link = net.linksBetween(net_node1, net_node2)
             link[0].intf1.config(delay=str(change[2])+'ms')
             link[0].intf2.config(delay=str(change[2])+'ms')
-            print "[Info] the latency of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "ms"
+            print("[Info] the latency of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "ms")
             if len(change) == 4:
                 link[0].intf1.config(bw=float(change[3]))
                 link[0].intf2.config(bw=float(change[3]))
-                print "[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[3]), "Mbps"
+                print("[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[3]), "Mbps")
 
     for change in capacity_changes:
         node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
@@ -381,7 +381,7 @@ def apply_link_updates_to_mininet(net, latency_changes, capacity_changes, num_of
             link = net.linksBetween(net_node1, net_node2)
             link[0].intf1.config(bw=float(change[2]))
             link[0].intf2.config(bw=float(change[2]))
-            print "[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "Mbps"
+            print("[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "Mbps")
 
     return net
 

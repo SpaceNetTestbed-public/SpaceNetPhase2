@@ -34,7 +34,7 @@ for gs in ground_stations:
     aggregate = str(len(ground_stations[gs]))+"_"
     for values in sorted(ground_stations[gs], key=lambda x: x[0]):
         if values[0] < datetime.datetime(2022,12,5,14,11,0):
-            print values[0], gs, values[2]
+            print(values[0], gs, values[2])
 
     # print gs, aggregate
     # print "------"

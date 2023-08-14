@@ -16,7 +16,7 @@ from sgp4 import exporter
 from pprint import pprint
 
 import threading
-import Queue
+import queue
 from copy import copy, deepcopy
 
 import networkx as nx
@@ -130,14 +130,14 @@ def main():
     resiliency_satellite_timestamp  = parse_resiliency_experiment_parameters(main_configurations)
     TopologyRoutes = {}
     if main_configurations["simulation"]["debug"] == 1:
-        print ".......... total number of satellites = ", num_of_satellites
-        print ".......... total number of ground_stations = ", num_of_ground_stations
+        print(".......... total number of satellites = ", num_of_satellites)
+        print(".......... total number of ground_stations = ", num_of_ground_stations)
 
     if main_configurations["simulation"]["debug"] == 1:
-        print "------------------------------------------------------------------"
+        print("------------------------------------------------------------------")
 
     sim_timeCount = main_configurations["simulation"]["length"]
- 
+
     while sim_timeCount >= 1:
         loopStart = round(time.time()*1000)
         increments += main_configurations["simulation"]["step"]
@@ -166,8 +166,8 @@ def main():
             available_ips           = generate_ips_for_constellation(main_configurations["constellation"]["routing"]["ip_range"])
 
             if main_configurations["simulation"]["debug"] == 1:
-                print "------------------------------------------------------------------"
-                print "..... Pre-compute Routing Tables Phase:"
+                print("------------------------------------------------------------------")
+                print("..... Pre-compute Routing Tables Phase:")
 
             #############  Disable this for dynamic routing
             start = round(time.time()*1000)
@@ -180,12 +180,12 @@ def main():
 
             if main_configurations["simulation"]["debug"] == 1:
                 in_sec = (end-start)/1000.0
-                print ".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
-                print ".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(TopologyRoutes["All_PreConfigured_routes"]), "routes"
+                print(".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs")
+                print(".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(TopologyRoutes["All_PreConfigured_routes"]), "routes")
 
             if main_configurations["simulation"]["debug"] == 1:
-                print "------------------------------------------------------------------"
-                print "..... Configure Mininet Phase:"
+                print("------------------------------------------------------------------")
+                print("..... Configure Mininet Phase:")
 
             # for i in range(len(satnat_topology_change["connectivity_matrix"])):
             #     for j in range(len(satnat_topology_change["connectivity_matrix"][i])):
@@ -198,8 +198,8 @@ def main():
             net.start()
             list_of_Intf_IPs        = topology.initial_ipv4_assignment_for_interfaces_optimised(main_configurations["data_n_results"]["simulation_results"], net, available_ips, [], main_configurations["constellation"]["routing"]["border_gateway"])
             if main_configurations["simulation"]["debug"] == 1:
-                print "------------------------------------------------------------------"
-                print "..... Generate IP Route Linux Commands Phase: "
+                print("------------------------------------------------------------------")
+                print("..... Generate IP Route Linux Commands Phase: ")
 
             absolute_path = "/home/mininet/simulator/constellation-simulator-main/results/starlink/"
             file = open(absolute_path+"links.txt", 'w')
@@ -225,25 +225,25 @@ def main():
             prepare_routing_config_commands(topology, main_configurations["data_n_results"]["simulation_results"], TopologyRoutes["All_PreConfigured_routes"], links_hash, list_of_Intf_IPs, satellites_by_index, 20);
             end  = round(time.time()*1000)
             if main_configurations["simulation"]["debug"] == 1:
-                print ".......... Generateing the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+                print(".......... Generateing the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs")
 
             if main_configurations["simulation"]["debug"] == 1:
-                print "------------------------------------------------------------------"
-                print "..... Compute Ground Stations Routing Phase:"
+                print("------------------------------------------------------------------")
+                print("..... Compute Ground Stations Routing Phase:")
 
             start = round(time.time()*1000)
             gs_routing(main_configurations["data_n_results"]["simulation_results"], gs_statellite_pair, links_hash, num_of_satellites, satellites_by_index, list_of_Intf_IPs, TopologyRoutes["Routes_per_satellites"], main_configurations, main_configurations["constellation"]["routing"]["border_gateway"])
             end = round(time.time()*1000)
 
             if main_configurations["simulation"]["debug"] == 1:
-                print ".......... Ground Stations Routes for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+                print(".......... Ground Stations Routes for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs")
             # os.system('python ../results/starlink/generate_ospf_config.py')
             # topology.startRoutingOSPF(main_configurations["data_n_results"]["simulation_results"], net, satellites_by_index)
             # CLI(net)
     	    # net.stop()
             if main_configurations["simulation"]["debug"] == 1:
-                print "------------------------------------------------------------------"
-                print "..... Deploy the IP Route Commands on Mininet VMs Phase:"
+                print("------------------------------------------------------------------")
+                print("..... Deploy the IP Route Commands on Mininet VMs Phase:")
 
 
             # # RE stands for Resiliency Experiment
@@ -278,7 +278,7 @@ def main():
             topology.startRoutingConfigV2(main_configurations["data_n_results"]["simulation_results"], net, satellites_by_index, ground_stations, topg["management_interface"])
             end = round(time.time()*1000)
             if main_configurations["simulation"]["debug"] == 1:
-                print "......... Deploy the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
+                print("......... Deploy the IP Route commands for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs")
 
             net = run_application(main_configurations["data_n_results"]["simulation_results"], net, main_configurations, list_of_Intf_IPs)
     	    #CLI(net)
@@ -291,10 +291,10 @@ def main():
             links_charateristics_changes    = merge_link_link_charateristics(latency_changes, capacity_changes)
 
             if main_configurations["simulation"]["debug"] == 1:
-                print ".......... Number of GSL link changes = ", len(topology_changes)
-                print ".......... Number of changes in link latency = ", len(latency_changes)
-                print ".......... Number of changed in link capacity = ", len(capacity_changes)
-                print ".......... Total link charateristics changes = ", len(links_charateristics_changes[0]), len(links_charateristics_changes[1])
+                print(".......... Number of GSL link changes = ", len(topology_changes))
+                print(".......... Number of changes in link latency = ", len(latency_changes))
+                print(".......... Number of changed in link capacity = ", len(capacity_changes))
+                print(".......... Total link charateristics changes = ", len(links_charateristics_changes[0]), len(links_charateristics_changes[1]))
 
             # sat_id = check_time_to_deploy_RE(resiliency_satellite_timestamp, year, month, day, hour, minute, float(second)+increments)
             # for id in sat_id:
@@ -318,7 +318,7 @@ def main():
 
         loopEnd = round(time.time()*1000)
         if main_configurations["simulation"]["debug"] == 1:
-            print ".......... One Simulation Loop for "+ time_utc_inc.utc_strftime() +" took ", (loopEnd-loopStart)/1000, " secs"
+            print(".......... One Simulation Loop for "+ time_utc_inc.utc_strftime() +" took ", (loopEnd-loopStart)/1000, " secs")
 
         sim_timeCount -= 1
 
