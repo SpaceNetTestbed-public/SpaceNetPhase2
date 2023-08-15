@@ -464,7 +464,7 @@ class sat_network(Topo):
             sat_node.cmd("python ../comm_protocol/satellite_worker.py "+node_m_ip+ " &")
 
     def create_static_routes_batch_parallel(self, routes, links, list_of_Intf_IPs, satellites_by_index, number_of_cores):
-        step = len(routes)/number_of_cores
+        step = len(routes)//number_of_cores
         routes_chunks = [routes[x:x+step] for x in range(0, len(routes), step)]
 
         static_routing_batch_args = []

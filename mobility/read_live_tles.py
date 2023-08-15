@@ -74,7 +74,7 @@ def get_orbital_planes_classifications(tle_filename, constellation, number_of_or
         list_of_values[i] = float(dump_orbital_data["RAAN"][i])
 
     print(len(dump_orbital_data["RAAN"]))
-    breaks = jenkspy.jenks_breaks(list_of_values, nb_class=number_of_orbits)
+    breaks = jenkspy.jenks_breaks(list_of_values, n_classes=number_of_orbits)
     totalsatellites = 0
     for b in range(1, len(breaks)):
         upperBound_of_class = float(breaks[b])

@@ -253,7 +253,7 @@ def parse_topology_routes(topology_route_path, num_of_satellites, time_utc):
                 route_file              = open(Rfilename, 'r')
                 routes                  = route_file.readlines()
                 num_thread              = 1000
-                sublist_len             = len(routes)/num_thread
+                sublist_len             = len(routes)//num_thread
 
                 for i in range(0, len(routes), sublist_len):
                     subroutes = routes[i:i+sublist_len]
