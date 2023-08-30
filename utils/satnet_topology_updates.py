@@ -24,7 +24,7 @@ def main():
     y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
     time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     time_timestamp = convert_time_utc_to_unix(time_utc)
-    print(time_utc, time_timestamp)
+    print((time_utc, time_timestamp))
 
     # 3 - Choose the recent TLE and load satellites
     path_of_recent_TLE = get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
@@ -46,8 +46,8 @@ def main():
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
     if main_configurations["simulation"]["debug"] == 1:
-        print(".......... total number of satellites = ", num_of_satellites)
-        print(".......... total number of ground_stations = ", num_of_ground_stations)
+        print((".......... total number of satellites = ", num_of_satellites))
+        print((".......... total number of ground_stations = ", num_of_ground_stations))
 
 
     if main_configurations["simulation"]["debug"] == 1:
@@ -86,7 +86,7 @@ def main():
 
         conn_mat_size = num_of_satellites + num_of_ground_stations
         if main_configurations["simulation"]["debug"] == 1:
-            print("..... Time: ", time_utc_inc.utc_strftime())
+            print(("..... Time: ", time_utc_inc.utc_strftime()))
         start = round(time.time()*1000)
         connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
         if main_configurations["constellation"]["operator"] == "oneweb":
@@ -99,7 +99,7 @@ def main():
         save_topology(connectivity_matrix, links_charateristics, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(sec))
         end = round(time.time()*1000)
         if main_configurations["simulation"]["debug"] == 1:
-            print(".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs")
+            print((".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs"))
 
 
         if main_configurations["simulation"]["debug"] == 1:
@@ -113,8 +113,8 @@ def main():
 
         if main_configurations["simulation"]["debug"] == 1:
             in_sec = (end-start)/1000.0
-            print(".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs")
-            print(".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(all_possible_routes), "routes")
+            print((".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"))
+            print((".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(all_possible_routes), "routes"))
             print("------------------------------------------------------------------")
 
         save_routes(all_possible_routes, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
