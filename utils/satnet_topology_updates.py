@@ -1,6 +1,6 @@
 import threading
 import os
-from .utils import *
+from utils import *
 # from datetime import *
 import time
 
@@ -58,19 +58,19 @@ def main():
     # 6 - Loop, update the topology and save it in a file.
     while 1:
         inc += time_resolution_in_seconds
-	sec = float(s)+inc
-	if (sec)%60 == 0:
+        sec = float(s)+inc
+        if (sec)%60 == 0:
             min=int(min)+1
             s = 0.0
-	    inc = 0
-	    sec = 0.0
+            inc = 0
+            sec = 0.0
 
-	if (int(min))%60 == 0 and int(min) != 0:
+        if (int(min))%60 == 0 and int(min) != 0:
             h=int(h)+1
             s = 0.0
             inc = 0
             sec = 0.0
-	    min = 0
+            min = 0
 
         time_utc_inc = ts.utc(int(y), int(mon), int(d), int(h), int(min), sec)
         time_timestamp = convert_time_utc_to_unix(time_utc_inc)
