@@ -3,11 +3,11 @@ constellation:
     number_of_shells: 1
     shell1:
         name: shell1
-        orbits: 1
-        sat_per_orbit: 2
-        altitude: 1000
+        orbits: 72
+        sat_per_orbit: 22
+        altitude: 550
         elevation_angle: 25
-        inclination: 0
+        inclination: 53
     topology:
         association_criteria_GSL: BASED_ON_DISTANCE_ONLY_MININET
         ISL: grid
@@ -22,18 +22,18 @@ ground_stations:
     gs_file: ../mobility/ground_stations_experiments.txt
 
 simulation:
-    start_time: 2023,09,13,8,50,00
-    length: 39
+    start_time: 2023,03,13,13,2,30
+    length: 40
     step: 1
     debug: 1
 
 application:
-    type: ping
-    source: gs24
-    destination: gs25
-    duration: 39
+    type: iperf
+    source: gs12
+    destination: gs5
+    duration: 40
     congestion_control: cubic
-    result_out: /mnt/ssung_pro_1/mn_results/starlink/analysis_results/iperf_LA_GS24to25
+    result_out: /mnt/ssung_pro_1/mn_results/starlink/analysis_results/iperf_test_GS12to5
     background_traffic: no
     tcpdump: no
 
@@ -44,6 +44,6 @@ resiliency:
   e_timestamps: ["2022,12,30,14,1,20", "2022,12,30,14,1,20"]
 
 data_n_results:
-    connectivity_matrix: ../utils/connectivity_matrix/starlink/
-    routing: ../utils/routing/starlink/
-    simulation_results: ../results/starlink
+    connectivity_matrix: /mnt/ssung_pro_1/mn_results/starlink/connectivity/
+    routing: /mnt/ssung_pro_1/mn_results/starlink/routing/
+    simulation_results: /mnt/ssung_pro_1/mn_results/starlink/results/

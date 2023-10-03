@@ -28,6 +28,7 @@ def main():
 
     # 3 - Choose the recent TLE and load satellites
     path_of_recent_TLE = get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
+    #path_of_recent_TLE = './starlink_tles/starlink_1694591150'
     print(path_of_recent_TLE)
     tle_timestamp = path_of_recent_TLE.split("_")[2]
     satellites = load.tle_file(path_of_recent_TLE)
