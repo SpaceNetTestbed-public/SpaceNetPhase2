@@ -164,12 +164,15 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     }
 
 def save_topology(connectivity_matrix, links_charateristics, main_configurations, timestamp):
+    existing_links = []
     f = open("./connectivity_matrix/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
     for i in range(len(connectivity_matrix)):
         for j in range(len(connectivity_matrix[i])):
             if connectivity_matrix[i][j] == 1:
-                write_this = str(i)+","+str(j)+","+str(round(links_charateristics["latency_matrix"][i][j],2))+","+str(round(links_charateristics["throughput_matrix"][i][j],2))+"\n"
-                f.write(write_this)
+                if i!=j and (i, j) not in existing_links:
+                   write_this = str(i)+","+str(j)+","+str(round(links_charateristics["latency_matrix"][i][j],2))+","+str(round(links_charateristics["throughput_matrix"][i][j],2))+"\n"
+                   f.write(write_this)
+                   existing_links.append((i, j))
     f.close()
 
 def save_routes(routes, main_configurations, timestamp):
@@ -209,13 +212,13 @@ def parse_connectivity_matrix_n_charateristics(time_utc, conn_mat_size, topology
                 lines = topology_file.readlines()
                 for line in lines:
                     link_config                                                     = line.split(",")
-                    connectivity_matrix[int(link_config[0])][int(link_config[1])]   = 1
-                    connectivity_matrix[int(link_config[1])][int(link_config[0])]   = 1
+                    connectivity_matrix[int(float(link_config[0]))][int(float(link_config[1]))]   = 1
+                    connectivity_matrix[int(float(link_config[1]))][int(float(link_config[0]))]   = 1
 
-                    links_latency[int(link_config[0])][int(link_config[1])]         = round(float(link_config[2]),0)
-                    links_latency[int(link_config[1])][int(link_config[0])]         = round(float(link_config[2]),0)
-                    links_capacity[int(link_config[0])][int(link_config[1])]        = round(float(link_config[3]),0)
-                    links_capacity[int(link_config[1])][int(link_config[0])]        = round(float(link_config[3]),0)
+                    links_latency[int(float(link_config[0]))][int(float(link_config[1]))]         = round(float(link_config[2]),0)
+                    links_latency[int(float(link_config[1]))][int(float(link_config[0]))]         = round(float(link_config[2]),0)
+                    links_capacity[int(float(link_config[0]))][int(float(link_config[1]))]        = round(float(link_config[3]),0)
+                    links_capacity[int(float(link_config[1]))][int(float(link_config[0]))]        = round(float(link_config[3]),0)
                 break
     if topology_file_found == 0:
         print("[Error] No Topology file available ... check the simulation step resolution")
