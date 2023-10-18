@@ -182,6 +182,12 @@ def save_routes(routes, main_configurations, timestamp):
         routes_log.write(str(current_route)[1:-1] + "\n")
     routes_log.close()
 
+def save_optimal_path(optimal_path, main_configurations, timestap):
+    optimal_log = open("./analysis/optimal/"+main_configurations["constellation"]["operator"]+"/best_path_"+timestap+".txt", "a")
+    for path in optimal_path:
+        optimal_log.write(str(path) + "\n")
+    optimal_log.close()
+
 def convert_time_utc_to_unix(time_utc):
     time_utc_string = time_utc.utc_strftime()
     time_datetime = datetime.strptime(time_utc_string, "%Y-%m-%d %H:%M:%S %Z")

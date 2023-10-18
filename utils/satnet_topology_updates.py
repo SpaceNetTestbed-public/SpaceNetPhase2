@@ -110,6 +110,10 @@ def main():
 
         all_possible_routes = initial_routing_v2(satellites_by_index, ground_stations, connectivity_matrix, links_charateristics["latency_matrix"])
 
+        source_node         = num_of_satellites + int(''.join(filter(str.isdigit, main_configurations["application"]["source"])))
+        destination_node    = num_of_satellites + int(''.join(filter(str.isdigit, main_configurations["application"]["destination"])))
+        optimal_route       = get_optimal_route(satellites=satellites_by_index, ground_stations=ground_stations, connectivity_matrix=connectivity_matrix, source=source_node, destination=destination_node)
+
         end = round(time.time()*1000)
 
         if main_configurations["simulation"]["debug"] == 1:
@@ -119,4 +123,6 @@ def main():
             print("------------------------------------------------------------------")
 
         save_routes(all_possible_routes, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
+        save_optimal_path(optimal_route, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
+
 main()

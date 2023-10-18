@@ -152,6 +152,37 @@ def static_routing_worker(args):
 
     return new_path
 
+
+def get_optimal_route(satellites, ground_stations, connectivity_matrix, source, destination):
+
+    # Topology Graph
+    mega_constellation_graph = nx.Graph()
+    
+    # Add Sat/GS nodes into Topology Graph
+    for n in range(len(satellites)+len(ground_stations)):
+        mega_constellation_graph.add_node(n)        # nodes where n > len(satellites) are ground stations
+
+    # Add whether the link is up
+    for i in range(len(connectivity_matrix)):
+        for j in range(len(connectivity_matrix[i])):
+            if connectivity_matrix[i][j] == 1:
+                mega_constellation_graph.add_edge(i, j, weight=1) #latency[i][j] - starlink, 1 - hopcount oneweb
+
+    # Initialize Static Routing table
+    static_routing_list_args = []
+
+    # Iterate over nodes and add 
+    for p in range(len(satellites)+len(ground_stations)):
+        for q in range(p, len(satellites)):
+            static_routing_list_args.append((mega_constellation_graph, p, q))
+
+    # Use Bellman-Ford Alg.
+    _, optimal_path, _ = bf.bellman_ford(mega_constellation_graph, source=source, target=destination, weight="weight")
+
+
+    return optimal_path
+
+
 def static_routing(G, destinations, num_of_satellites, num_of_ground_stations, num_of_threads):
     for i in range(num_of_satellites+num_of_ground_stations):
         for dest in destinations:
