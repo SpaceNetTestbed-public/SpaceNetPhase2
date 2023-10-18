@@ -307,8 +307,8 @@ def mininet_add_GSLs_parallel(connectivity_matrix, satellites_by_name, satellite
             print ("[Mininet_add_GSLs] --- check the max GSL length variable ")
             return ;
     # find all satellites in range for each ground station.
-    number_of_pools = round((len(ground_stations)/number_of_threads))
-    num_of_gs_per_pool = round((len(ground_stations)/number_of_pools))
+    number_of_pools = np.ceil((len(ground_stations)/number_of_threads))
+    num_of_gs_per_pool = np.ceil((len(ground_stations)/number_of_pools))
 
 
     ground_station_satellites_in_range = [[] for c in range(int(number_of_pools+1))]

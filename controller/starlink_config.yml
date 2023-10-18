@@ -4,7 +4,7 @@ constellation:
     shell1:
         name: shell1
         orbits: 1
-        sat_per_orbit: 2
+        sat_per_orbit: 72
         altitude: 1000
         elevation_angle: 25
         inclination: 0
@@ -19,19 +19,19 @@ constellation:
         other_constellation_ip_range: 11.0.0.0
 
 ground_stations:
-    gs_file: ../mobility/ground_stations_experiments.txt
+    gs_file: ../mobility/ground_stations_fake.txt
 
 simulation:
     start_time: 2023,09,13,8,50,00
-    length: 39
+    length: 10
     step: 1
     debug: 1
 
 application:
     type: ping
-    source: gs24
-    destination: gs25
-    duration: 39
+    source: gs0
+    destination: gs1
+    duration: 10
     congestion_control: cubic
     result_out: /mnt/ssung_pro_1/mn_results/starlink/analysis_results/iperf_LA_GS24to25
     background_traffic: no

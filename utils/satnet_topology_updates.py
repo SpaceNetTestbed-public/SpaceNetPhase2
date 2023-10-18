@@ -56,8 +56,12 @@ def main():
 
     conn_mat_size = num_of_satellites + num_of_ground_stations
 
+    # Optimal path initialization
+    indx_opt                    = 0
+    optimal_routes_per_timestep = [[],] * float(main_configurations["simulation"]["length"])/(main_configurations["simulation"]["step"])
+
     # 6 - Loop, update the topology and save it in a file.
-    while 1:
+    while inc <= float(main_configurations["simulation"]["length"]):
         inc += time_resolution_in_seconds
         sec = float(s)+inc
         if (sec)%60 == 0:
@@ -113,6 +117,8 @@ def main():
         source_node         = num_of_satellites + int(''.join(filter(str.isdigit, main_configurations["application"]["source"])))
         destination_node    = num_of_satellites + int(''.join(filter(str.isdigit, main_configurations["application"]["destination"])))
         optimal_route       = get_optimal_route(satellites=satellites_by_index, ground_stations=ground_stations, connectivity_matrix=connectivity_matrix, source=source_node, destination=destination_node)
+        optimal_routes_per_timestep[indx_opt] = optimal_route
+        indx_opt            += 1
 
         end = round(time.time()*1000)
 
@@ -123,6 +129,7 @@ def main():
             print("------------------------------------------------------------------")
 
         save_routes(all_possible_routes, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
-        save_optimal_path(optimal_route, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
+
+    save_optimal_path(optimal_routes_per_timestep, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
 
 main()
