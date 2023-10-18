@@ -58,7 +58,7 @@ def main():
 
     # Optimal path initialization
     indx_opt                    = 0
-    optimal_routes_per_timestep = [[],] * float(main_configurations["simulation"]["length"])/(main_configurations["simulation"]["step"])
+    optimal_routes_per_timestep = [[],] * int(main_configurations["simulation"]["length"])/int(main_configurations["simulation"]["step"])
 
     # 6 - Loop, update the topology and save it in a file.
     while inc <= float(main_configurations["simulation"]["length"]):
