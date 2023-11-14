@@ -23,17 +23,17 @@ ground_stations:
 
 simulation:
     start_time: 2023,09,13,8,50,00
-    length: 10
-    step: 1
+    length: 600
+    step: 15
     debug: 1
 
 application:
     type: ping
     source: gs0
     destination: gs1
-    duration: 10
+    duration: 45
     congestion_control: cubic
-    result_out: /mnt/ssung_pro_1/mn_results/starlink/analysis_results/iperf_LA_GS24to25
+    result_out: ../analysis/results/GS0_GS1_ping.txt
     background_traffic: no
     tcpdump: no
 

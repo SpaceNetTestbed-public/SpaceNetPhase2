@@ -20,7 +20,8 @@ def main():
     # 2 - Get current time
     ts = load.timescale()
     inc = 0
-    time_resolution_in_seconds = 1
+    indx = 1
+    time_resolution_in_seconds = main_configurations["simulation"]["step"]
     y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
     time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     time_timestamp = convert_time_utc_to_unix(time_utc)
@@ -60,7 +61,9 @@ def main():
     optimal_routes_per_timestep = []
 
     # 6 - Loop, update the topology and save it in a file.
-    while inc <= float(main_configurations["simulation"]["length"]):
+    while indx <= float(main_configurations["simulation"]["length"])/time_resolution_in_seconds:
+        print("\nITERATION #:", str(indx), "\n\n")
+        indx += 1
         inc += time_resolution_in_seconds
         sec = float(s)+inc
         if (sec)%60 == 0:
