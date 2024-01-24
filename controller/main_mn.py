@@ -112,6 +112,7 @@ def main():
     ts                              = load.timescale()
     main_configurations             = parse_config_file_yml(".","starlink_config.yml")
     path_of_recent_TLE              = get_recent_TLEs_using_datetime("../utils/", main_configurations["simulation"]["start_time"], main_configurations["constellation"]["operator"])
+    print("recent TLE path: ", path_of_recent_TLE)
     satellites                      = load.tle_file(path_of_recent_TLE)
     satellites_by_name              = {sat.name.split(" ")[0]: sat for sat in satellites}
     satellites_by_index             = {}

@@ -1,5 +1,6 @@
 import threading
 import os
+from tqdm import tqdm
 from utils import *
 # from datetime import *
 import time
@@ -25,12 +26,12 @@ def main():
     y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
     time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     time_timestamp = convert_time_utc_to_unix(time_utc)
-    print((time_utc, time_timestamp))
+    print((y,mon,d,h,min,s))
 
     # 3 - Choose the recent TLE and load satellites
     path_of_recent_TLE = get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
     #path_of_recent_TLE = './starlink_tles/starlink_1694591150'
-    print(path_of_recent_TLE)
+    #print(path_of_recent_TLE)
     tle_timestamp = path_of_recent_TLE.split("_")[2]
     satellites = load.tle_file(path_of_recent_TLE)
     satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
@@ -60,11 +61,12 @@ def main():
     # Optimal path initialization
     optimal_routes_per_timestep = []
 
+    # Time history
+    time_hist = np.arange(0, main_configurations["simulation"]["length"], time_resolution_in_seconds)
+
     # 6 - Loop, update the topology and save it in a file.
-    while indx <= float(main_configurations["simulation"]["length"])/time_resolution_in_seconds:
-        print("\nITERATION #:", str(indx), "\n\n")
+    for inc in tqdm(time_hist, total=len(time_hist)):
         indx += 1
-        inc += time_resolution_in_seconds
         sec = float(s)+inc
         if (sec)%60 == 0:
             min=int(min)+1

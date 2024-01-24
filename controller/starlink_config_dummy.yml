@@ -3,11 +3,11 @@ constellation:
     number_of_shells: 1
     shell1:
         name: shell1
-        orbits: 72
-        sat_per_orbit: 22
-        altitude: 550
+        orbits: 1
+        sat_per_orbit: 72
+        altitude: 1000
         elevation_angle: 25
-        inclination: 53
+        inclination: 0
     topology:
         association_criteria_GSL: BASED_ON_DISTANCE_ONLY_MININET
         ISL: grid
@@ -19,21 +19,21 @@ constellation:
         other_constellation_ip_range: 11.0.0.0
 
 ground_stations:
-    gs_file: ../mobility/ground_stations_experiments.txt
+    gs_file: ../mobility/ground_stations_fake.txt
 
 simulation:
-    start_time: 2023,03,13,13,2,30
-    length: 40
-    step: 1
+    start_time: 2023,09,13,8,50,00
+    length: 600
+    step: 15
     debug: 1
 
 application:
-    type: iperf
-    source: gs12
-    destination: gs5
-    duration: 39
+    type: ping
+    source: gs0
+    destination: gs1
+    duration: 45
     congestion_control: cubic
-    result_out: ../analysis/iperf_python3_topo_test
+    result_out: ../analysis/results/GS0_GS1_ping.txt
     background_traffic: no
     tcpdump: no
 
