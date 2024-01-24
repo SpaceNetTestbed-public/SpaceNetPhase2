@@ -65,7 +65,7 @@ def main():
                 parameters = find_the_route_of_this_destination_sat(item["satellite"], list_of_Intf_IPs)
 
                 command = ["ip", "route", "add", gs_network_address, "via", parameters[2], "dev", parameters[3]]
-                print command
+                print(command)
                 # subprocess.call(command)
 
 

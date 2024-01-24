@@ -135,7 +135,7 @@ def find_nearest_sat_in_adjacent_plane(constellation_planes, sat, key, satellite
 def get_differences_in_GSLs_between_iterations(old_list, new_list):
 	differences = []
 	i = 0;
-	for o,n in itertools.izip(old_list,new_list):
+	for o,n in zip(old_list,new_list):
 		if o != n:
 			differences.append((i, o, n))
 		i += 1
@@ -152,7 +152,7 @@ def find_adjacent_orbit_sat(current_plane, current_sat, adj_plane, satellites_so
             min_distance = distance
             nearest_sat_in_adj_plane = adj_plane_sats[i]
 
-    print current_sat, min_distance, nearest_sat_in_adj_plane.name.split(" ")[0]
+    #print(current_sat, min_distance, nearest_sat_in_adj_plane.name.split(" ")[0])
     return nearest_sat_in_adj_plane.name.split(" ")[0]
 
 def find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, current_plane, current_sat, adj_plane, satellites_sorted_in_orbits, satellites_by_name, t):
@@ -171,7 +171,7 @@ def find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, cur
 
     for i in range(len(adj_plane_sats)):
         distance = distance_between_two_satellites(current_sat, adj_plane_sats[i], t)
-        satindx = satellites_by_index.keys()[satellites_by_index.values().index(str(adj_plane_sats[i].name.split(" ")[0]))]
+        satindx = list(satellites_by_index.keys())[list(satellites_by_index.values()).index(str(adj_plane_sats[i].name.split(" ")[0]))]
         if distance < min_distance and number_of_neighbors_per_sat[satindx] < 5:
             min_distance = distance
             nearest_sat_in_adj_plane = adj_plane_sats[i]
@@ -202,10 +202,10 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
 
                 # Grid for the edge satellites
                 sat_adjacent_orbit_1 = find_adjacent_orbit_sat(i, current_sat, (i+1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
-                sat_adjacent_orbit_1 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_1))]
+                sat_adjacent_orbit_1 = list(satellites_by_index.keys())[list(satellites_by_index.values()).index(str(sat_adjacent_orbit_1))]
 
                 sat_adjacent_orbit_2 = find_adjacent_orbit_sat(i, current_sat, (i-1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
-                sat_adjacent_orbit_2 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_2))]
+                sat_adjacent_orbit_2 = list(satellites_by_index.keys())[list(satellites_by_index.values()).index(str(sat_adjacent_orbit_2))]
 
 
                 connectivity_matrix[sat][sat_adjacent_orbit_1] = 1
@@ -233,10 +233,10 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
                 # Grid for the edge satellites
                 sat_adjacent_orbit_1 = find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, i, current_sat, (i+1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
                 if sat_adjacent_orbit_1 != -1:
-                    sat_adjacent_orbit_1 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_1))]
+                    sat_adjacent_orbit_1 = list(satellites_by_index.keys())[list(satellites_by_index.values()).index(str(sat_adjacent_orbit_1))]
                 sat_adjacent_orbit_2 = find_adjacent_orbit_sat_oneweb(connectivity_matrix, satellites_by_index, i, current_sat, (i-1)%n_orbits, satellites_sorted_in_orbits, satellites_by_name, t)
                 if sat_adjacent_orbit_2 != -1:
-                    sat_adjacent_orbit_2 = satellites_by_index.keys()[satellites_by_index.values().index(str(sat_adjacent_orbit_2))]
+                    sat_adjacent_orbit_2 = list(satellites_by_index.keys())[list(satellites_by_index.values()).index(str(sat_adjacent_orbit_2))]
 
                 if sat_adjacent_orbit_1 != -1:
                     connectivity_matrix[sat][sat_adjacent_orbit_1] = 1
@@ -253,7 +253,7 @@ def mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellite
 def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, number_of_threads, association_criteria, t, main_configurations):
     max_gsl_length_m = calc_max_gsl_length(main_configurations)
     if main_configurations["simulation"]["debug"] == 1:
-        print ".......... Maximum GSL links for", main_configurations["constellation"]["operator"], "Constellation is ", max_gsl_length_m, " meters"
+        print(".......... Maximum GSL links for", main_configurations["constellation"]["operator"], "Constellation is ", max_gsl_length_m, " meters")
 
     if max_gsl_length_m == -1:
         if main_configurations["simulation"]["debug"] == 1:
@@ -300,15 +300,15 @@ def mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_inde
 def mininet_add_GSLs_parallel(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, number_of_threads, association_criteria, t, main_configurations):
     max_gsl_length_m = calc_max_gsl_length(main_configurations)
     if main_configurations["simulation"]["debug"] == 1:
-        print ".......... Maximum GSL links for", main_configurations["constellation"]["operator"], "Constellation is ", max_gsl_length_m, " meters"
+        print(".......... Maximum GSL links for", main_configurations["constellation"]["operator"], "Constellation is ", max_gsl_length_m, " meters")
 
     if max_gsl_length_m == -1:
         if main_configurations["simulation"]["debug"] == 1:
             print ("[Mininet_add_GSLs] --- check the max GSL length variable ")
             return ;
     # find all satellites in range for each ground station.
-    number_of_pools = round((len(ground_stations)/number_of_threads))
-    num_of_gs_per_pool = round((len(ground_stations)/number_of_pools))
+    number_of_pools = np.ceil((len(ground_stations)/number_of_threads))
+    num_of_gs_per_pool = np.ceil((len(ground_stations)/number_of_pools))
 
 
     ground_station_satellites_in_range = [[] for c in range(int(number_of_pools+1))]
@@ -397,7 +397,7 @@ def M_gs_sat_no_association_criteria(connectivity_matrix, all_gs_satellites_in_r
 
         # connectivity_matrix[sid][num_of_satellites+1] = 1
         # connectivity_matrix[num_of_satellites+1][sid] = 1
-        print "best distance ",0, sid, satellites_by_index[sid], distance_m, az, alt
+        print("best distance ",0, sid, satellites_by_index[sid], distance_m, az, alt)
         # print "best distance ",1, sid, distance_m, az, alt
 
     return connectivity_matrix
@@ -454,14 +454,14 @@ def M_gs_sat_association_criteria_MaxAssociationTime(connectivity_matrix, ground
         if t.tt > gs["next_update"] or gs["next_update"] == "":
             chosen_satellite = last_visible_satellite(gs, ground_station_satellites_in_range_temporary, num_of_satellites, satellites_by_index, satellites_by_name, max_gsl_length_m, t)
             if chosen_satellite != -1:
-                print "....... Current time = ", t.tt," GS#", gs["gid"], " is associated with SAT#", chosen_satellite[0]," which is named as ", chosen_satellite[1], ". The next uupdate time will be ", gs["next_update"]
+                print("....... Current time = ", t.tt," GS#", gs["gid"], " is associated with SAT#", chosen_satellite[0]," which is named as ", chosen_satellite[1], ". The next uupdate time will be ", gs["next_update"])
                 connectivity_matrix[num_of_satellites+gs["gid"]][chosen_satellite[1]] = 1
                 connectivity_matrix[chosen_satellite[1]][num_of_satellites+gs["gid"]] = 1
                 gs["sat_re_LAC"] = chosen_satellite[1]
             else:
-                print gs["gid"], -1
+                print(gs["gid"], -1)
         else:
-            print "....... No updates = ", t.tt
+            print("....... No updates = ", t.tt)
             connectivity_matrix[num_of_satellites+gs["gid"]][gs["sat_re_LAC"]] = 1
             connectivity_matrix[gs["sat_re_LAC"]][num_of_satellites+gs["gid"]] = 1
             continue

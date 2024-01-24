@@ -27,13 +27,13 @@ def parse_config_file(filepath, filename):
     return configurations
 
 def main():
-    print "run this main .."
+    print("run this main ..")
     satellites = load.tle_file("https://celestrak.org/NORAD/elements/supplemental/starlink.txt")
 
 
     ts = load.timescale()
     actual_time = ts.now()
-    print actual_time.utc_strftime()
+    print(actual_time.utc_strftime())
 
     satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
     satellites_by_index = {}
@@ -55,7 +55,7 @@ def main():
             if i == int(orbital_data[str(data)][2]):
                 satellites_in_orbit.append(satellites_by_name[str(data.split(" ")[0])])
                 cn +=1
-        print ".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites"
+        print(".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites")
 
         sorted = sort_satellites_in_orbit(satellites_in_orbit, actual_time)
         satellites_sorted_in_orbits.append(sorted)
@@ -78,8 +78,8 @@ def main():
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
 
-    print ".......... total number of satellites = ", num_of_satellites
-    print ".......... total number of ground_stations = ", num_of_ground_stations
+    print(".......... total number of satellites = ", num_of_satellites)
+    print(".......... total number of ground_stations = ", num_of_ground_stations)
     conn_mat_size = num_of_satellites + num_of_ground_stations
     
     addthis = 0
@@ -88,7 +88,7 @@ def main():
         t = ts.now()
         addthis += 1
         t = ts.utc(int(2022), int(7), int(25), int(15), int(15), float(0)+addthis)
-        print t.utc_strftime()
+        print(t.utc_strftime())
         # print t.utc_strftime()
         connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
         connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, "BASED_ON_LONGEST_ASSOCIATION_TIME", t, main_configurations)

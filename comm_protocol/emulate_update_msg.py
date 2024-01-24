@@ -4,8 +4,8 @@ import subprocess
 import threading
 import os
 import sys
-import control_mgs_pb2 as ControlMsg
-import mc_msgs_pb2 as MCMsgs
+from . import control_mgs_pb2 as ControlMsg
+from . import mc_msgs_pb2 as MCMsgs
 import networkx as nx
 
 import matplotlib.pyplot as plt
@@ -39,7 +39,7 @@ def main():
 
         if int(sat) != prev_sat[int(gs)]:
             count +=1
-            print timestamp, gs, sat
+            print(timestamp, gs, sat)
             prev_sat[int(gs)] = int(sat)
             if "STARLINK-"+str(sat) in actual_sat_number_to_counter and timestamp != "2021-12-01 15:43:58":
                 # print timestamp, gs, sat
@@ -61,5 +61,5 @@ def main():
 
             else:
                 count2 +=1
-    print count, count2
+    print(count, count2)
 main()

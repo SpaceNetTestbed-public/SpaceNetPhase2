@@ -6,7 +6,7 @@ import numpy as np
 import datetime
 
 import threading
-import Queue
+import queue
 from copy import copy, deepcopy
 
 import networkx as nx
@@ -33,7 +33,7 @@ def gs_routing_worker (data_path, gs_sat, links_updated, num_of_satellites, sate
             if len(parameters) > 0:
                 update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(gs_network_address)+"/28 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
             else:
-                print route_to_sat_GW
+                print(route_to_sat_GW)
 
     if len(update_gsl_routing_cmd) > 0:
         for update in update_gsl_routing_cmd:
@@ -53,7 +53,7 @@ def update_GSL_thread(sat_id, change, constellation_routes, links_updated, list_
                 update_gsl_routing_cmd.append("ip route del "+str(gs_network_address)+" via "+str(parameters[2])+" dev "+str(parameters[3]))
     else:
         if sat_id != int(change[0]):
-            print "Error: cannot find the route between sat", sat_id, " and sat", change[0]
+            print("Error: cannot find the route between sat", sat_id, " and sat", change[0])
 
 def static_routing_worker(args):
     (
@@ -80,7 +80,7 @@ def initial_routing(satellites, ground_stations, connectivity_matrix):
                 mega_constellation_graph.add_edge(i, j, weight=1)
 
     static_routing_list_args = []
-    print len(mega_constellation_graph.edges())
+    print(len(mega_constellation_graph.edges()))
     for p in range(len(satellites)+len(ground_stations)):#len(satellites)+len(ground_stations)
         for q in range(p, len(satellites)+len(ground_stations)):
             static_routing_list_args.append((mega_constellation_graph, p, q))
@@ -152,6 +152,28 @@ def static_routing_worker(args):
 
     return new_path
 
+
+def get_optimal_route(satellites, ground_stations, connectivity_matrix, source, destination):
+
+    # Topology Graph
+    mega_constellation_graph = nx.Graph()
+    
+    # Add Sat/GS nodes into Topology Graph
+    for n in range(len(satellites)+len(ground_stations)):
+        mega_constellation_graph.add_node(n)        # nodes where n > len(satellites) are ground stations
+
+    # Add whether the link is up
+    for i in range(len(connectivity_matrix)):
+        for j in range(len(connectivity_matrix[i])):
+            if connectivity_matrix[i][j] == 1:
+                mega_constellation_graph.add_edge(i, j, weight=1) #latency[i][j] - starlink, 1 - hopcount oneweb
+
+    # Use Bellman-Ford Alg.
+    _, optimal_path, _ = bf.bellman_ford(mega_constellation_graph, source=source, target=destination, weight="weight")
+
+    return optimal_path
+
+
 def static_routing(G, destinations, num_of_satellites, num_of_ground_stations, num_of_threads):
     for i in range(num_of_satellites+num_of_ground_stations):
         for dest in destinations:
@@ -207,11 +229,11 @@ def static_routing_update_commands(static_routes, links, list_of_Intf_IPs, satel
 
             if dest_node_intf != "" and next_h_node_intf != "" and src_node_intf !="":
                 cmd_on_src_node  = "ip route add "+get_network_address(get_node_intf_ip(dest_node_intf, list_of_Intf_IPs))+"/28 via "+get_node_intf_ip(next_h_node_intf, list_of_Intf_IPs)+" dev "+src_node_intf
-                print cmd_on_src_node
+                print(cmd_on_src_node)
 
             if src_node_intf != "" and last_h_node_intf != "" and dest_node_intf != "":
                 cmd_on_dest_node = "ip route add "+get_network_address(get_node_intf_ip(src_node_intf, list_of_Intf_IPs))+"/28 via "+get_node_intf_ip(last_h_node_intf, list_of_Intf_IPs)+" dev "+dest_node_intf
-                print cmd_on_dest_node
+                print(cmd_on_dest_node)
 
 def get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satellites):
     parameters = []
@@ -276,7 +298,7 @@ def get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satelli
             # print dest_ip_address
             dest_nw_ip = get_network_address(dest_ip_address.split("/")[0])+"/28"
         else:
-            print "Error: No link between ", str(last_hop_node), " and ", str(dest_node)
+            print("Error: No link between ", str(last_hop_node), " and ", str(dest_node))
             exit()
 
         if src_node_intf != "":
@@ -286,7 +308,7 @@ def get_static_route_parameter_optimised(route, links, list_of_Intf_IPs, satelli
             # print src_ip_address
             src_nw_ip = get_network_address(src_ip_address.split("/")[0])+"/28"
         else:
-            print "Error: No link between ", str(src_node), " and ", str(next_hop_node)
+            print("Error: No link between ", str(src_node), " and ", str(next_hop_node))
             exit()
 
 
@@ -355,7 +377,7 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites):
             next_hop_ip = get_node_intf_ip(next_h_node_intf, list_of_Intf_IPs)
             out_interface = src_node_intf
         else:
-            print "Error: No link between ", str(last_hop_node), " and ", str(dest_node)
+            print("Error: No link between ", str(last_hop_node), " and ", str(dest_node))
             exit()
 
         if src_node_intf != "":
@@ -363,7 +385,7 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites):
             last_hop_ip = get_node_intf_ip(last_h_node_intf, list_of_Intf_IPs)
             out_interface_2 = dest_node_intf
         else:
-            print "Error: No link between ", str(src_node), " and ", str(next_hop_node)
+            print("Error: No link between ", str(src_node), " and ", str(next_hop_node))
             exit()
 
         parameters.append(src_node)
@@ -416,7 +438,7 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites):
             next_hop_ip = get_node_intf_ip(next_h_node_intf, list_of_Intf_IPs)
             out_interface = src_node_intf
         else:
-            print "Error: No link between ", str(last_hop_node), " and ", str(dest_node)
+            print("Error: No link between ", str(last_hop_node), " and ", str(dest_node))
             exit()
 
         if src_node_intf != "":
@@ -424,7 +446,7 @@ def get_static_route_parameter(route, links, list_of_Intf_IPs, satellites):
             last_hop_ip = get_node_intf_ip(last_h_node_intf, list_of_Intf_IPs)
             out_interface_2 = dest_node_intf
         else:
-            print "Error: No link between ", str(src_node), " and ", str(next_hop_node)
+            print("Error: No link between ", str(src_node), " and ", str(next_hop_node))
             exit()
 
         parameters.append(src_node)
@@ -482,7 +504,7 @@ def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, 
 
         # print key
         if list_of_Intf_IPs.get(key) is None:
-            print "error -- no ip for this ground station", gs_number
+            print("error -- no ip for this ground station", gs_number)
             return
 
         gs_ip = list_of_Intf_IPs[key][0].split("/")[0]
@@ -501,7 +523,7 @@ def gs_routing(data_path, gs_statellite_pair, links_updated, num_of_satellites, 
                     if main_configurations["constellation"]["routing"]["interDomain_routing"] == 1 and "gs"+str(gs_number) == main_configurations["constellation"]["routing"]["border_gateway"]:
                         update_gsl_routing_cmd.append("sat"+str(i)+",ip route add "+str(main_configurations["constellation"]["routing"]["other_constellation_ip_range"])+"/20 via "+str(parameters[2][:-3])+" dev "+str(parameters[3]))
                 else:
-                    print "-----> ", route_to_sat_GW
+                    print("-----> ", route_to_sat_GW)
 
     if len(update_gsl_routing_cmd) > 0:
         for update in update_gsl_routing_cmd:
@@ -547,7 +569,7 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
                 key = str("gs"+str(gs_number)+"-eth1")
 
             if list_of_Intf_IPs.get(key) is None:
-                print "error -- no ip for this ground station", gs_number
+                print("error -- no ip for this ground station", gs_number)
                 return
 
             gs_ip = list_of_Intf_IPs[key][0].split("/")[0]
@@ -580,7 +602,7 @@ def lightweight_routing(data_path, route_changes, links_updated, num_of_satellit
                             update_gsl_routing_cmd.append("sat"+str(i)+",ip route del "+str(gs_network_address)+"/28 via "+str(parameters[2])+" dev "+str(parameters[3]))
                 else:
                     if i!= int(change[0]):
-                        print "Error: cannot find the route between sat", i, " and sat", change[0]
+                        print("Error: cannot find the route between sat", i, " and sat", change[0])
             gsl_ch += 1
 
         # #####

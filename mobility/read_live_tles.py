@@ -14,7 +14,7 @@ import statistics
 import jenkspy
 
 import sys
-from mobility_utils import *
+from .mobility_utils import *
 
 def get_orbital_planes(tle_filename, shell_num):
     orbital_data = {}
@@ -23,7 +23,7 @@ def get_orbital_planes(tle_filename, shell_num):
 
     # each iteration we read three lines at once
     for i in range(0,len(Lines),3):
-        tle_second_line = list(filter(None, Lines[i+2].strip("\n").split(" ")))
+        tle_second_line = list([_f for _f in Lines[i+2].strip("\n").split(" ") if _f])
 
         if shell_num == 1:
             if float(tle_second_line[2]) < 53.2: #Inclination of shell 1 should be 53.0 degrees
@@ -37,15 +37,15 @@ def get_orbital_planes_classifications(tle_filename, constellation, number_of_or
     data_orbits                 = {}
     dump_orbital_data           = {"Epoch": [], "Satellites": [], "Inclination": [], "RAAN": [], "Mean anomaly": [], "ecc": [], "aop": [], "Mean motion": []}
 
-    print tle_filename
+    print(tle_filename)
     tle_file = open(tle_filename, 'r')
     Lines = tle_file.readlines()
 
     # First, we dump the TLE files into the dump_orbital_data variable
     # We read the three lines by three lines, and save satellite names, inclination and RAAN
     for i in range(0,len(Lines),3):
-        tle_first_line = list(filter(None, Lines[i+1].strip("\n").split(" ")))
-        tle_second_line = list(filter(None, Lines[i+2].strip("\n").split(" ")))
+        tle_first_line = list([_f for _f in Lines[i+1].strip("\n").split(" ") if _f])
+        tle_second_line = list([_f for _f in Lines[i+2].strip("\n").split(" ") if _f])
 
         if constellation == "starlink":
             if float(tle_second_line[2]) < (orbits_inclination+0.1) and float(tle_second_line[2]) >= (orbits_inclination): #Inclination of Starlink shell 1 should be 53.0 degrees
@@ -73,8 +73,8 @@ def get_orbital_planes_classifications(tle_filename, constellation, number_of_or
     for i in range(0, len(dump_orbital_data["RAAN"])):
         list_of_values[i] = float(dump_orbital_data["RAAN"][i])
 
-    print len(dump_orbital_data["RAAN"])
-    breaks = jenkspy.jenks_breaks(list_of_values, nb_class=number_of_orbits)
+    print(len(dump_orbital_data["RAAN"]))
+    breaks = jenkspy.jenks_breaks(list_of_values, n_classes=number_of_orbits)
     totalsatellites = 0
     for b in range(1, len(breaks)):
         upperBound_of_class = float(breaks[b])
@@ -83,7 +83,7 @@ def get_orbital_planes_classifications(tle_filename, constellation, number_of_or
         # print "Class -------------------- "+str(class_num)
         count_sats_per_orbit = 0
 
-        for i,j in itertools.izip(range(len(dump_orbital_data["Satellites"])), range(len(dump_orbital_data["RAAN"]))):
+        for i,j in zip(list(range(len(dump_orbital_data["Satellites"]))), list(range(len(dump_orbital_data["RAAN"])))):
             if b == 1:
                 if float(dump_orbital_data["RAAN"][j]) <= upperBound_of_class and float(dump_orbital_data["RAAN"][j]) >= lowerBound_of_class:
                     # print dump_orbital_data["Satellites"][i], dump_orbital_data["RAAN"][j]
@@ -96,7 +96,7 @@ def get_orbital_planes_classifications(tle_filename, constellation, number_of_or
         # print "Num of Sats ----------------", count_sats_per_orbit
         totalsatellites += count_sats_per_orbit
 
-    print totalsatellites
+    print(totalsatellites)
 
     return data_orbits
 

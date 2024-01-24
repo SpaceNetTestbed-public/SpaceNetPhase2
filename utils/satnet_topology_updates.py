@@ -1,5 +1,6 @@
 import threading
 import os
+from tqdm import tqdm
 from utils import *
 # from datetime import *
 import time
@@ -20,15 +21,17 @@ def main():
     # 2 - Get current time
     ts = load.timescale()
     inc = 0
-    time_resolution_in_seconds = 1
+    indx = 1
+    time_resolution_in_seconds = main_configurations["simulation"]["step"]
     y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
     time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     time_timestamp = convert_time_utc_to_unix(time_utc)
-    print time_utc, time_timestamp
+    print((y,mon,d,h,min,s))
 
     # 3 - Choose the recent TLE and load satellites
     path_of_recent_TLE = get_recent_TLEs_using_timestamp("./", time_timestamp, main_configurations["constellation"]["operator"])
-    print path_of_recent_TLE
+    #path_of_recent_TLE = './starlink_tles/starlink_1694591150'
+    #print(path_of_recent_TLE)
     tle_timestamp = path_of_recent_TLE.split("_")[2]
     satellites = load.tle_file(path_of_recent_TLE)
     satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
@@ -46,31 +49,37 @@ def main():
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
     if main_configurations["simulation"]["debug"] == 1:
-        print ".......... total number of satellites = ", num_of_satellites
-        print ".......... total number of ground_stations = ", num_of_ground_stations
+        print((".......... total number of satellites = ", num_of_satellites))
+        print((".......... total number of ground_stations = ", num_of_ground_stations))
 
 
     if main_configurations["simulation"]["debug"] == 1:
-        print "..... Phase-1: Build Topology"
+        print("..... Phase-1: Build Topology")
 
     conn_mat_size = num_of_satellites + num_of_ground_stations
 
+    # Optimal path initialization
+    optimal_routes_per_timestep = []
+
+    # Time history
+    time_hist = np.arange(0, main_configurations["simulation"]["length"], time_resolution_in_seconds)
+
     # 6 - Loop, update the topology and save it in a file.
-    while 1:
-        inc += time_resolution_in_seconds
-	sec = float(s)+inc
-	if (sec)%60 == 0:
+    for inc in tqdm(time_hist, total=len(time_hist)):
+        indx += 1
+        sec = float(s)+inc
+        if (sec)%60 == 0:
             min=int(min)+1
             s = 0.0
-	    inc = 0
-	    sec = 0.0
+            inc = 0
+            sec = 0.0
 
-	if (int(min))%60 == 0 and int(min) != 0:
+        if (int(min))%60 == 0 and int(min) != 0:
             h=int(h)+1
             s = 0.0
             inc = 0
             sec = 0.0
-	    min = 0
+            min = 0
 
         time_utc_inc = ts.utc(int(y), int(mon), int(d), int(h), int(min), sec)
         time_timestamp = convert_time_utc_to_unix(time_utc_inc)
@@ -86,36 +95,44 @@ def main():
 
         conn_mat_size = num_of_satellites + num_of_ground_stations
         if main_configurations["simulation"]["debug"] == 1:
-            print "..... Time: ", time_utc_inc.utc_strftime()
+            print(("..... Time: ", time_utc_inc.utc_strftime()))
         start = round(time.time()*1000)
         connectivity_matrix = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
         if main_configurations["constellation"]["operator"] == "oneweb":
             connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS_ONEWEB", time_utc_inc)
         else:
             connectivity_matrix = mininet_add_ISLs(connectivity_matrix, satellites_sorted_in_orbits, satellites_by_name, satellites_by_index, "SAME_ORBIT_AND_GRID_ACROSS_ORBITS", time_utc_inc)
-        connectivity_matrix = mininet_add_GSLs(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["constellation"]["topology"]["association_criteria_GSL"], time_utc_inc, main_configurations)
+        connectivity_matrix = mininet_add_GSLs_parallel(connectivity_matrix, satellites_by_name, satellites_by_index, ground_stations, 12, main_configurations["constellation"]["topology"]["association_criteria_GSL"], time_utc_inc, main_configurations)
         links_charateristics = calculate_link_charateristics_for_gsls_isls(connectivity_matrix, satellites_by_index, satellites_by_name, ground_stations, time_utc_inc)
 
         save_topology(connectivity_matrix, links_charateristics, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(sec))
         end = round(time.time()*1000)
         if main_configurations["simulation"]["debug"] == 1:
-            print ".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs"
+            print((".......... Connectivity Matrix for", main_configurations["constellation"]["operator"], "Constellation is created in", (end-start)/1000, "secs"))
 
 
         if main_configurations["simulation"]["debug"] == 1:
-            print "..... Phase-2: Pre-compute Routing Tables:"
+            print("..... Phase-2: Pre-compute Routing Tables:")
 
         start = round(time.time()*1000)
 
         all_possible_routes = initial_routing_v2(satellites_by_index, ground_stations, connectivity_matrix, links_charateristics["latency_matrix"])
 
+        source_node         = num_of_satellites + int(''.join(filter(str.isdigit, main_configurations["application"]["source"])))
+        destination_node    = num_of_satellites + int(''.join(filter(str.isdigit, main_configurations["application"]["destination"])))
+        optimal_route       = get_optimal_route(satellites=satellites_by_index, ground_stations=ground_stations, connectivity_matrix=connectivity_matrix, source=source_node, destination=destination_node)
+        optimal_routes_per_timestep.append(optimal_route)
+
         end = round(time.time()*1000)
 
         if main_configurations["simulation"]["debug"] == 1:
             in_sec = (end-start)/1000.0
-            print ".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"
-            print ".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(all_possible_routes), "routes"
-            print "------------------------------------------------------------------"
+            print((".......... Routing Pre-computation for", main_configurations["constellation"]["operator"], "Constellation is completed in", (end-start)/1000, "secs"))
+            print((".......... Total Number of routes for", main_configurations["constellation"]["operator"], "Constellation is", len(all_possible_routes), "routes"))
+            print("------------------------------------------------------------------")
 
         save_routes(all_possible_routes, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
+
+    save_optimal_path(optimal_routes_per_timestep, main_configurations, str(y)+"_"+str(mon)+"_"+str(d)+"_"+str(h)+"_"+str(min)+"_"+str(float(s)+inc))
+
 main()

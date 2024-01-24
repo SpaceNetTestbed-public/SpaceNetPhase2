@@ -40,7 +40,7 @@ def get_recent_TLEs_using_timestamp(path, timestamp, constellation):
             file_timesamp = int(filename.split("_")[1])
             if int(timestamp-file_timesamp) < timestamp_diff and int(timestamp-file_timesamp) > 0:
                 timestamp_diff = int(timestamp-file_timesamp)
-                print timestamp_diff, file_timesamp, timestamp
+                print(timestamp_diff, file_timesamp, timestamp)
                 recent_file = f
 
     return recent_file
@@ -93,7 +93,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
     timestamp = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
     f = open(path+"satellites_orbits/"+main_configurations["constellation"]["operator"]+"/sorted_satellites_within_orbit_"+tle_timestamp+".txt", "a")
     if main_configurations["simulation"]["debug"] == 1:
-        print "..... Phase-1: Constellation Orbits:"
+        print("..... Phase-1: Constellation Orbits:")
 
     satellites_sorted_in_orbits = []        #carry satellites names according to STARLINK naming conversion (list of lists)
 
@@ -107,7 +107,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
                 cn +=1
 
         if main_configurations["simulation"]["debug"]==1:
-            print ".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites"
+            print(".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites")
 
         sorted = sort_satellites_in_orbit(satellites_in_orbit, timestamp)
         satellites_sorted_in_orbits.append(sorted)
@@ -119,7 +119,7 @@ def arrange_satellites(path, orbital_data, satellites_by_name, main_configuratio
                 # print write_this
     f.close()
     # Update the satellite_by_index
-    absolute_path = "/home/mininet/simulator/SimLEO_MConstellations/results/starlink/"
+    absolute_path = "/home/mininet/simulator/constellation-simulator-main/results/starlink/"
     file = open(absolute_path+"orbits_satellites.txt", 'w')
     sat_index = -1
     orbit_id = 0
@@ -152,9 +152,9 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     num_of_satellites = len(orbital_data)
     num_of_ground_stations = len(ground_stations)
     if main_configurations["Debug"] == 1:
-        print "................................. Re Loading the new TLE files ..........................."
-        print ".......... total number of satellites = ", num_of_satellites
-        print ".......... total number of ground_stations = ", num_of_ground_stations
+        print("................................. Re Loading the new TLE files ...........................")
+        print(".......... total number of satellites = ", num_of_satellites)
+        print(".......... total number of ground_stations = ", num_of_ground_stations)
 
     return {"orbital_data": orbital_data,
             "satellites_by_name": satellites_by_name,
@@ -164,12 +164,15 @@ def reload_tles(path_of_recent_TLE, main_configurations):
     }
 
 def save_topology(connectivity_matrix, links_charateristics, main_configurations, timestamp):
+    existing_links = []
     f = open("./connectivity_matrix/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
     for i in range(len(connectivity_matrix)):
         for j in range(len(connectivity_matrix[i])):
             if connectivity_matrix[i][j] == 1:
-                write_this = str(i)+","+str(j)+","+str(round(links_charateristics["latency_matrix"][i][j],2))+","+str(round(links_charateristics["throughput_matrix"][i][j],2))+"\n"
-                f.write(write_this)
+                if i!=j and (i, j) not in existing_links:
+                   write_this = str(i)+","+str(j)+","+str(round(links_charateristics["latency_matrix"][i][j],2))+","+str(round(links_charateristics["throughput_matrix"][i][j],2))+"\n"
+                   f.write(write_this)
+                   existing_links.append((i, j))
     f.close()
 
 def save_routes(routes, main_configurations, timestamp):
@@ -178,6 +181,12 @@ def save_routes(routes, main_configurations, timestamp):
         current_route = route[0][:]
         routes_log.write(str(current_route)[1:-1] + "\n")
     routes_log.close()
+
+def save_optimal_path(optimal_path, main_configurations, timestap):
+    optimal_log = open("../analysis/optimal_routes/"+main_configurations["constellation"]["operator"]+"/best_path_"+timestap+".txt", "a")
+    for path in optimal_path:
+        optimal_log.write(str(path) + "\n")
+    optimal_log.close
 
 def convert_time_utc_to_unix(time_utc):
     time_utc_string = time_utc.utc_strftime()
@@ -209,13 +218,13 @@ def parse_connectivity_matrix_n_charateristics(time_utc, conn_mat_size, topology
                 lines = topology_file.readlines()
                 for line in lines:
                     link_config                                                     = line.split(",")
-                    connectivity_matrix[int(link_config[0])][int(link_config[1])]   = 1
-                    connectivity_matrix[int(link_config[1])][int(link_config[0])]   = 1
+                    connectivity_matrix[int(float(link_config[0]))][int(float(link_config[1]))]   = 1
+                    connectivity_matrix[int(float(link_config[1]))][int(float(link_config[0]))]   = 1
 
-                    links_latency[int(link_config[0])][int(link_config[1])]         = round(float(link_config[2]),0)
-                    links_latency[int(link_config[1])][int(link_config[0])]         = round(float(link_config[2]),0)
-                    links_capacity[int(link_config[0])][int(link_config[1])]        = round(float(link_config[3]),0)
-                    links_capacity[int(link_config[1])][int(link_config[0])]        = round(float(link_config[3]),0)
+                    links_latency[int(float(link_config[0]))][int(float(link_config[1]))]         = round(float(link_config[2]),0)
+                    links_latency[int(float(link_config[1]))][int(float(link_config[0]))]         = round(float(link_config[2]),0)
+                    links_capacity[int(float(link_config[0]))][int(float(link_config[1]))]        = round(float(link_config[3]),0)
+                    links_capacity[int(float(link_config[1]))][int(float(link_config[0]))]        = round(float(link_config[3]),0)
                 break
     if topology_file_found == 0:
         print("[Error] No Topology file available ... check the simulation step resolution")
@@ -253,7 +262,7 @@ def parse_topology_routes(topology_route_path, num_of_satellites, time_utc):
                 route_file              = open(Rfilename, 'r')
                 routes                  = route_file.readlines()
                 num_thread              = 1000
-                sublist_len             = len(routes)/num_thread
+                sublist_len             = len(routes)//num_thread
 
                 for i in range(0, len(routes), sublist_len):
                     subroutes = routes[i:i+sublist_len]
@@ -317,7 +326,7 @@ def merge_link_link_charateristics(latency_changes, capacity_changes):
 
 def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satellites, time_utc_inc):
     for change in topology_changes:
-        print change
+        print(change)
         node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
         node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
 
@@ -327,12 +336,12 @@ def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satell
         if change[2] == 1 and change[3] == 0:
             if net.linksBetween(net_node1, net_node2):
                 net.delLinkBetween(net_node1, net_node2)
-                print "[Info] the link between ", str(node1), "and", str(node2), "is deleted ..."
+                print("[Info] the link between ", str(node1), "and", str(node2), "is deleted ...")
             else:
-                print "[Error] the link does not exist ... check apply_updates_to_mininet function", str(node1), "--", str(node2)
+                print("[Error] the link does not exist ... check apply_updates_to_mininet function", str(node1), "--", str(node2))
 
     for change in topology_changes:
-        print change
+        print(change)
         node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
         node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
 
@@ -341,7 +350,7 @@ def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satell
 
         if change[2] == 0 and change[3] == 1:
             net.addLink(net_node1, net_node2, cls=TCLink)
-            print "[Info] the link between ", str(node1), "and", str(node2), "is added ..."
+            print("[Info] the link between ", str(node1), "and", str(node2), "is added ...")
 
     for i in range(0, num_of_satellites):
         sat_node = net.getNodeByName("sat"+str(i))
@@ -364,11 +373,11 @@ def apply_link_updates_to_mininet(net, latency_changes, capacity_changes, num_of
             link = net.linksBetween(net_node1, net_node2)
             link[0].intf1.config(delay=str(change[2])+'ms')
             link[0].intf2.config(delay=str(change[2])+'ms')
-            print "[Info] the latency of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "ms"
+            print("[Info] the latency of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "ms")
             if len(change) == 4:
                 link[0].intf1.config(bw=float(change[3]))
                 link[0].intf2.config(bw=float(change[3]))
-                print "[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[3]), "Mbps"
+                print("[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[3]), "Mbps")
 
     for change in capacity_changes:
         node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
@@ -381,7 +390,7 @@ def apply_link_updates_to_mininet(net, latency_changes, capacity_changes, num_of
             link = net.linksBetween(net_node1, net_node2)
             link[0].intf1.config(bw=float(change[2]))
             link[0].intf2.config(bw=float(change[2]))
-            print "[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "Mbps"
+            print("[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "Mbps")
 
     return net
 

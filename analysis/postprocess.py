@@ -163,7 +163,7 @@ def read_text_file(
 
                 # Submit tasks to thread pool
                 output = list(tqdm(executor.map(separate_content_by_test,
-                                                *zip(*[(line, index, num_lines, test_type) for index, line in enumerate(file)])),
+                                                *list(zip(*[(line, index, num_lines, test_type) for index, line in enumerate(file)]))),
                                                 total=num_lines))
 
         # Shut down thread pool
@@ -337,8 +337,8 @@ if __name__ == "__main__":
         
         # Print results
         #os.system('clear')
-        print("\nData: " + mstd_key['data_file'])
+        print(("\nData: " + mstd_key['data_file']))
         if mstd_key['test_type'] == 'iperf':
-            print("\nMean:\t\t\t" + str(result[0][1]) + " Mbps\nStd. dev (samp.):\t" + str(result[1][1]) + " Mbps\nStd. dev (pop.):\t" + str(result[2][1]) + " Mbps\n\n")
+            print(("\nMean:\t\t\t" + str(result[0][1]) + " Mbps\nStd. dev (samp.):\t" + str(result[1][1]) + " Mbps\nStd. dev (pop.):\t" + str(result[2][1]) + " Mbps\n\n"))
         elif mstd_key['test_type'] == 'ping':
-            print("\nMean:\t\t\t" + str(result[0]) + " ms\nStd. dev (samp.):\t" + str(result[1]) + " ms\nStd. dev (pop.):\t" + str(result[2]) + " ms\n\n")
+            print(("\nMean:\t\t\t" + str(result[0]) + " ms\nStd. dev (samp.):\t" + str(result[1]) + " ms\nStd. dev (pop.):\t" + str(result[2]) + " ms\n\n"))

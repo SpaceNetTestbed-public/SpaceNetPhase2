@@ -4,8 +4,8 @@ import subprocess
 import threading
 import os
 import sys
-import control_mgs_pb2 as ControlMsg
-import mc_msgs_pb2 as MCMsgs
+from . import control_mgs_pb2 as ControlMsg
+from . import mc_msgs_pb2 as MCMsgs
 
 def get_intf(filename):
     Intf_file = open(filename, 'r')
@@ -98,7 +98,7 @@ def gsl_update_msg_handler(message_command, message_receiver, gsl_update_type, g
                 #['172.16.0.0', '0.0.0.0', '255.255.0.0', 'U', '0', '0', '0', 'enp0s8']
                 command = ["ip", "route", "add", gs_ip, "via", route_next_hop_for_GS_Gateway_seen_at_this_sat(output[1]), "dev", route_out_interface_for_GS_Gateway_seen_at_this_sat(output[7])]
             except subprocess.CalledProcessError as e:
-                print(e.output)
+                print((e.output))
 
         # output = subprocess.check_output(('awk','{print $1}'),stdin=ps.stdout)
 
@@ -193,7 +193,7 @@ def main():
         bytesAddressPair = UDPSocket.recvfrom(1024)
         recv_msg = MCMsgs.mega_constellation_msg()
         recv_msg.ParseFromString(bytesAddressPair[0])
-        print "Received "+str(recv_msg.message_type)+" for "+str(recv_msg.message_receiver)
+        print("Received "+str(recv_msg.message_type)+" for "+str(recv_msg.message_receiver))
 
         if recv_msg.message_type == 0: # IP_ASSIGNMENT
             t = threading.Thread(target=ip_assignment_msg_handler, args=(recv_msg.message_command, recv_msg.message_receiver, recv_msg.ifconfig_ip, recv_msg.ifconfig_interface))

@@ -22,9 +22,9 @@ ground_stations:
     gs_file: ../mobility/ground_stations_experiments.txt
 
 simulation:
-    start_time: 2023,03,13,13,2,25
+    start_time: 2023,12,04,21,1,0
     length: 300
-    step: 1
+    step: 15
     debug: 1
 
 application:
@@ -33,7 +33,7 @@ application:
     destination: gs5
     duration: 300
     congestion_control: cubic
-    result_out: ../analysis/iperf_Longest_Association_GRID_GS5_GS12
+    result_out: ../analysis/iperf_python3_topo_test
     background_traffic: no
     tcpdump: no
 
@@ -46,4 +46,4 @@ resiliency:
 data_n_results:
     connectivity_matrix: ../utils/connectivity_matrix/starlink/
     routing: ../utils/routing/starlink/
-    simulation_results: ../results/starlink
+    simulation_results: ../results/starlink/

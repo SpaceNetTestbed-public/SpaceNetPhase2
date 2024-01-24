@@ -3,8 +3,8 @@ from socket import *
 import subprocess
 import time
 import sys
-import control_mgs_pb2 as ControlMsg
-import c_m_update_topology_pb2 as updateTopologyMsg
+from . import control_mgs_pb2 as ControlMsg
+from . import c_m_update_topology_pb2 as updateTopologyMsg
 import string
 
 #serverAddressPort   = ("172.16.255.255", 20001)
@@ -51,7 +51,7 @@ def send_command(message_to_send, serverAddressPort):
     	UDPClientSocket.sendto(message_to_send, serverAddressPort)
         UDPClientSocket.close()
     except error as e:
-        print e
+        print(e)
         UDPClientSocket.close()
 
 #UDPClientSocket = establish_connection()

@@ -1,6 +1,6 @@
 mean_and_stddev:
-    data_file:  ping_Longest_Association_GRID_GS5_GS12
-    test_type:  ping
+    data_file:  iperf_Longest_Association_GRID_GS5_GS12
+    test_type:  iperf
     input_dir:  
     output_dir: plots/
     save_plot:  False

@@ -1,0 +1,423 @@
+import threading
+import os
+from datetime import *
+import time
+import re
+s
+from mininet.net import Mininet
+from mininet.node import Node, OVSKernelSwitch, Controller, RemoteController
+from mininet.cli import CLI
+from mininet.link import TCLink
+from mininet.link import *
+from mininet.topo import Topo
+from mininet.log import setLogLevel, info
+from mininet.node import OVSController
+
+import yaml
+import sys
+sys.path.append("../")
+from mobility.read_live_tles import *
+
+def check_time_to_deploy_RE(resiliency_satellite_timestamp, year, month, day, hour, minute, seconds):
+    ret_sats = []
+    for sats in resiliency_satellite_timestamp:
+        RET_start_y,RET_start_m,RET_start_d,RET_start_h,RET_start_min,RET_start_s = resiliency_satellite_timestamp[sats][0].split(",")[0], resiliency_satellite_timestamp[sats][0].split(",")[1], resiliency_satellite_timestamp[sats][0].split(",")[2], resiliency_satellite_timestamp[sats][0].split(",")[3], resiliency_satellite_timestamp[sats][0].split(",")[4], resiliency_satellite_timestamp[sats][0].split(",")[5]
+        if int(RET_start_y) == int(year) and int(RET_start_m) == int(month) and int(RET_start_d) == int(day) and int(RET_start_h) == int(hour) and int(RET_start_min) == int(minute) and int(RET_start_s) == int(seconds):
+            ret_sats.append(sats[3:])
+
+    return ret_sats
+
+# def deploy_RE(satellite_id, connectivity_matrixsatnat_topology_change["connectivity_matrix"], TopologyRoutes["All_PreConfigured_routes"]:
+
+def get_recent_TLEs_using_timestamp(path, timestamp, constellation):
+    recent_file = ""
+    timestamp_diff = 10000000
+    directory = path+constellation+'_tles'
+
+    for filename in os.listdir(directory):
+        f = os.path.join(directory, filename)
+        if os.path.isfile(f):
+            file_timesamp = int(filename.split("_")[1])
+            if int(timestamp-file_timesamp) < timestamp_diff and int(timestamp-file_timesamp) > 0:
+                timestamp_diff = int(timestamp-file_timesamp)
+                print timestamp_diff, file_timesamp, timestamp
+                recent_file = f
+
+    return recent_file
+
+def get_recent_TLEs_using_datetime(path, datetime, constellation):
+    ts = load.timescale()
+    y,mon,d,h,min,s = datetime.split(",")[0], datetime.split(",")[1], datetime.split(",")[2], datetime.split(",")[3], datetime.split(",")[4], datetime.split(",")[5]
+
+    time_utc = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
+    time_timestamp = convert_time_utc_to_unix(time_utc)
+
+    return get_recent_TLEs_using_timestamp(path, time_timestamp, constellation)
+
+def parse_config_file_yml(filepath, filename):
+    with open(filepath+"/"+filename, "r") as ymlfile:
+        cfg = yaml.safe_load(ymlfile)
+
+    return cfg
+
+def parse_resiliency_experiment_parameters(main_configurations):
+    resiliency_satellite_timestamp = {}
+
+    for sats, s_timestamps, e_timestamps in zip(main_configurations["resiliency"]["affected_satellites"], main_configurations["resiliency"]["s_timestamps"], main_configurations["resiliency"]["e_timestamps"]):
+        resiliency_satellite_timestamp[sats] = (s_timestamps,e_timestamps)
+
+    return resiliency_satellite_timestamp
+
+def parse_config_file(filepath, filename):
+    configurations = {"topology_path":"", "topology_routes_path":"", "simulation_results_n_data":"", "simulation_start_time":"", "simulation_time(second)":0, "mode":0, "simulation_step(second)":0, "Fresh_run":False, "ground_stations":"./", "inclination":0, "constellation":"starlink", "tle_file":"", "number_of_orbits":0, "number_of_sat_per_orbit":0, "altitude":0, "elevation_angle":0, "experiment":2, "constellation_ip_range":"", "other_constellation_ip_range": "", "association_criteria":"BASED_ON_DISTANCE_ONLY_MININET" ,"exit_gw": "" ,"interDomain_routing":0 , "False_run_archieve_path_foldername":"" ,"Debug":1}
+    configFile = open(filepath+"/"+filename, 'r')
+    configs = configFile.readlines()
+
+    for config in configs:
+        config_parameters = config.split("=")
+        if config_parameters[1].strip().isdigit():
+            configurations[str(config_parameters[0])]=int(config_parameters[1].strip())
+        elif config_parameters[1].strip() == "False" or config_parameters[1].strip() == "True":
+            if config_parameters[1].strip() == "False":
+                configurations[str(config_parameters[0])] = False
+            elif config_parameters[1].strip() == "True":
+                configurations[str(config_parameters[0])] = True
+        else:
+            configurations[str(config_parameters[0])]=config_parameters[1].strip()
+
+    return configurations
+
+def arrange_satellites(path, orbital_data, satellites_by_name, main_configurations, simulation_start_time, satellites_by_index, tle_timestamp):
+    ts = load.timescale()
+    y,mon,d,h,min,s = main_configurations["simulation"]["start_time"].split(",")[0],main_configurations["simulation"]["start_time"].split(",")[1],main_configurations["simulation"]["start_time"].split(",")[2],main_configurations["simulation"]["start_time"].split(",")[3],main_configurations["simulation"]["start_time"].split(",")[4],main_configurations["simulation"]["start_time"].split(",")[5]
+    timestamp = ts.utc(int(y), int(mon), int(d), int(h), int(min), float(s))
+    f = open(path+"satellites_orbits/"+main_configurations["constellation"]["operator"]+"/sorted_satellites_within_orbit_"+tle_timestamp+".txt", "a")
+    if main_configurations["simulation"]["debug"] == 1:
+        print "..... Phase-1: Constellation Orbits:"
+
+    satellites_sorted_in_orbits = []        #carry satellites names according to STARLINK naming conversion (list of lists)
+
+    for i in range(main_configurations["constellation"]["shell1"]["orbits"]):
+        sorted = []
+        satellites_in_orbit = []
+        cn = 0
+        for data in orbital_data:
+            if i == int(orbital_data[str(data)][0]):
+                satellites_in_orbit.append(satellites_by_name[str(data.split(" ")[0])])
+                cn +=1
+
+        if main_configurations["simulation"]["debug"]==1:
+            print ".......... Orbit no.    "+str(i)+"    ->  "+str(cn)+" satellites"
+
+        sorted = sort_satellites_in_orbit(satellites_in_orbit, timestamp)
+        satellites_sorted_in_orbits.append(sorted)
+
+        if main_configurations["simulation"]["debug"]==1:
+            for s in sorted:
+                write_this = str(i)+" "+str(s.name)+" "+str(orbital_data[str(s.name)])+"\n"
+                f.write(write_this)
+                # print write_this
+    f.close()
+    # Update the satellite_by_index
+    absolute_path = "/home/mininet/simulator/constellation-simulator-main/results/starlink/"
+    file = open(absolute_path+"orbits_satellites.txt", 'w')
+    sat_index = -1
+    orbit_id = 0
+    for orbit in satellites_sorted_in_orbits:
+        orbit_id += 1
+        for i in range(len(orbit)):
+            sat_index += 1
+            satellites_by_index[sat_index] = orbit[i].name.split(" ")[0]
+            file.write(str(orbit_id)+"\t"+str(sat_index)+"\n")
+    file.close()
+
+    return {"sorted satellite in orbits": satellites_sorted_in_orbits,
+            "satellites by index": satellites_by_index
+            }
+
+
+def reload_tles(path_of_recent_TLE, main_configurations):
+    tle_timestamp = path_of_recent_TLE.split("_")[2]
+    satellites = load.tle_file(path_of_recent_TLE)
+    satellites_by_name = {sat.name.split(" ")[0]: sat for sat in satellites}
+    satellites_by_index = {}
+
+    orbital_data  = get_orbital_planes_classifications(path_of_recent_TLE, main_configurations["constellation"]["operator"], main_configurations["constellation"]["shell1"]["orbits"], main_configurations["constellation"]["shell1"]["sat_per_orbit"], main_configurations["constellation"]["shell1"]["inclination"])
+    arranged_sats = arrange_satellites(orbital_data, satellites_by_name, main_configurations, time_utc ,satellites_by_index, tle_timestamp)
+    satellites_by_index = arranged_sats["satellites by index"]
+    satellites_sorted_in_orbits = arranged_sats["sorted satellite in orbits"]
+
+    # print satellites_sorted_in_orbits
+
+    num_of_satellites = len(orbital_data)
+    num_of_ground_stations = len(ground_stations)
+    if main_configurations["Debug"] == 1:
+        print "................................. Re Loading the new TLE files ..........................."
+        print ".......... total number of satellites = ", num_of_satellites
+        print ".......... total number of ground_stations = ", num_of_ground_stations
+
+    return {"orbital_data": orbital_data,
+            "satellites_by_name": satellites_by_name,
+            "satellites_by_index": satellites_by_index,
+            "satellites_sorted_in_orbits": satellites_sorted_in_orbits,
+            "num_of_satellites": num_of_satellites
+    }
+
+def save_topology(connectivity_matrix, links_charateristics, main_configurations, timestamp):
+    f = open("./connectivity_matrix/"+main_configurations["constellation"]["operator"]+"/topology_"+timestamp+".txt", "a")
+    for i in range(len(connectivity_matrix)):
+        for j in range(len(connectivity_matrix[i])):
+            if connectivity_matrix[i][j] == 1:
+                write_this = str(i)+","+str(j)+","+str(round(links_charateristics["latency_matrix"][i][j],2))+","+str(round(links_charateristics["throughput_matrix"][i][j],2))+"\n"
+                f.write(write_this)
+    f.close()
+
+def save_routes(routes, main_configurations, timestamp):
+    routes_log = open("./routing/"+main_configurations["constellation"]["operator"]+"/routes_"+timestamp+".txt", "a")
+    for route in routes:
+        current_route = route[0][:]
+        routes_log.write(str(current_route)[1:-1] + "\n")
+    routes_log.close()
+
+def convert_time_utc_to_unix(time_utc):
+    time_utc_string = time_utc.utc_strftime()
+    time_datetime = datetime.strptime(time_utc_string, "%Y-%m-%d %H:%M:%S %Z")
+    time_timestamp = time.mktime(time_datetime.timetuple())
+
+    return time_timestamp
+
+def convert_time_utc_to_ymdhms(time_utc):
+    time_utc_string = time_utc.utc_strftime()
+    date, t_time, zone = time_utc_string.split(" ")
+    year, month, day = date.split("-")
+    hour, minute, second = t_time.split(":")
+    return (year, month, day, hour, minute, second)
+
+def parse_connectivity_matrix_n_charateristics(time_utc, conn_mat_size, topology_path):
+    time_components         = convert_time_utc_to_ymdhms(time_utc)
+    topology_file_found     = 0
+    connectivity_matrix     = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
+    links_latency           = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
+    links_capacity          = [[0 for c in range(conn_mat_size)] for r in range(conn_mat_size)]
+
+    for filename in os.listdir(topology_path):
+        f = os.path.join(topology_path, filename)
+        if os.path.isfile(f):
+            if int(time_components[0]) == int(filename.split("_")[1]) and int(time_components[1]) == int(filename.split("_")[2]) and int(time_components[2]) == int(filename.split("_")[3]) and int(time_components[3]) == int(filename.split("_")[4]) and int(time_components[4]) == int(filename.split("_")[5]) and int(time_components[5]) == int(float(filename.split("_")[6][:-4])):
+                topology_file_found = 1
+                topology_file = open(f, 'r')
+                lines = topology_file.readlines()
+                for line in lines:
+                    link_config                                                     = line.split(",")
+                    connectivity_matrix[int(link_config[0])][int(link_config[1])]   = 1
+                    connectivity_matrix[int(link_config[1])][int(link_config[0])]   = 1
+
+                    links_latency[int(link_config[0])][int(link_config[1])]         = round(float(link_config[2]),0)
+                    links_latency[int(link_config[1])][int(link_config[0])]         = round(float(link_config[2]),0)
+                    links_capacity[int(link_config[0])][int(link_config[1])]        = round(float(link_config[3]),0)
+                    links_capacity[int(link_config[1])][int(link_config[0])]        = round(float(link_config[3]),0)
+                break
+    if topology_file_found == 0:
+        print("[Error] No Topology file available ... check the simulation step resolution")
+        return -1
+
+    return {
+            "connectivity_matrix": connectivity_matrix,
+            "links_latency":       links_latency,
+            "links_capacity":      links_capacity
+            }
+
+def read_IProute_files_thread(routes, initial_routes):
+    for route in routes:
+        route_new = []
+        route_list = re.split(", | |\n", route)
+        route = [int(r) for r in route_list if r.strip()]
+        route_new.append(route)
+        initial_routes.append(route_new)
+
+def parse_topology_routes(topology_route_path, num_of_satellites, time_utc):
+    time_components         = convert_time_utc_to_ymdhms(time_utc)
+    routes_file_found     = 0
+
+    for filename in os.listdir(topology_route_path):
+        f = os.path.join(topology_route_path, filename)
+        if os.path.isfile(f):
+            if int(time_components[0]) == int(filename.split("_")[1]) and int(time_components[1]) == int(filename.split("_")[2]) and int(time_components[2]) == int(filename.split("_")[3]) and int(time_components[3]) == int(filename.split("_")[4]) and int(time_components[4]) == int(filename.split("_")[5]) and int(time_components[5]) == int(float(filename.split("_")[6][:-4])):
+                routes_file_found = 1
+
+                constellation_routes    = {m: [] for m in range(num_of_satellites)}
+                initial_routes          = []
+                thread_list             = []
+
+                Rfilename               = f
+                route_file              = open(Rfilename, 'r')
+                routes                  = route_file.readlines()
+                num_thread              = 1000
+                sublist_len             = len(routes)/num_thread
+
+                for i in range(0, len(routes), sublist_len):
+                    subroutes = routes[i:i+sublist_len]
+                    thread = threading.Thread(target=read_IProute_files_thread, args=(subroutes, initial_routes))
+                    thread_list.append(thread)
+
+                for thread in thread_list:
+                    thread.start()
+                for thread in thread_list:
+                    thread.join()
+
+                copy_initial_routes     = initial_routes[:]
+                for route in copy_initial_routes:
+                    if len(route[0]) != 0:
+                        current_route = route[0]
+                        i = current_route[0]
+                        constellation_routes[i].append(route)
+
+                break
+
+    if routes_file_found == 0:
+        print("[Error] No Rotue file available ... check the simulation step resolution")
+        return -1
+
+    return {
+                "All_PreConfigured_routes": initial_routes,
+                "Routes_per_satellites": constellation_routes
+            }
+
+def check_changes_in_link_charateristics(old_links_charateristics, new_links_charateristics):
+    changes = []
+    for i in range(len(new_links_charateristics)):
+        for j in range(len(new_links_charateristics[i])):
+            if new_links_charateristics[i][j] != old_links_charateristics[i][j]:
+                changes.append((i, j, old_links_charateristics[i][j], new_links_charateristics[i][j]))
+
+    return changes
+
+def merge_link_link_charateristics(latency_changes, capacity_changes):
+    merged_changes = []
+    for lchange in latency_changes:
+        found = 0
+        for cchange in capacity_changes:
+            if (lchange[0] == cchange[0]) and (lchange[1] == cchange[1]):
+                merged_changes.append((lchange[0], lchange[1], lchange[3], cchange[3]))
+                found = 1
+        if found == 0:
+            merged_changes.append((lchange[0], lchange[1], lchange[3]))
+
+    merged_changes2 = []
+    for change in capacity_changes:
+        found = 0
+        for mchange in merged_changes:
+            if (change[0] == mchange[0]) and (change[1] == mchange[1]):
+                found = 1
+
+        if found == 0:
+            merged_changes2.append((change[0], change[1], change[3]))
+
+    return (merged_changes, merged_changes2)
+
+def apply_topology_updates_to_mininet(path, net, topology_changes, num_of_satellites, time_utc_inc):
+    for change in topology_changes:
+        print change
+        node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
+        node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
+
+        net_node1 = net.getNodeByName(node1)
+        net_node2 = net.getNodeByName(node2)
+
+        if change[2] == 1 and change[3] == 0:
+            if net.linksBetween(net_node1, net_node2):
+                net.delLinkBetween(net_node1, net_node2)
+                print "[Info] the link between ", str(node1), "and", str(node2), "is deleted ..."
+            else:
+                print "[Error] the link does not exist ... check apply_updates_to_mininet function", str(node1), "--", str(node2)
+
+    for change in topology_changes:
+        print change
+        node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
+        node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
+
+        net_node1 = net.getNodeByName(node1)
+        net_node2 = net.getNodeByName(node2)
+
+        if change[2] == 0 and change[3] == 1:
+            net.addLink(net_node1, net_node2, cls=TCLink)
+            print "[Info] the link between ", str(node1), "and", str(node2), "is added ..."
+
+    for i in range(0, num_of_satellites):
+        sat_node = net.getNodeByName("sat"+str(i))
+        command = "../"+path+"/routes_updates_"+str(time_utc_inc.utc_strftime())+"/sat"+str(i)+"_routes.sh"
+        # pkill_command = "pkill -f "+"*_routes.sh"
+        # sat_node.cmd(pkill_command)
+        sat_node.cmd(command)
+
+    return net
+
+def apply_link_updates_to_mininet(net, latency_changes, capacity_changes, num_of_satellites, time_utc_inc):
+    for change in latency_changes:
+        node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
+        node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
+
+        net_node1 = net.getNodeByName(node1)
+        net_node2 = net.getNodeByName(node2)
+
+        if net.linksBetween(net_node1, net_node2):
+            link = net.linksBetween(net_node1, net_node2)
+            link[0].intf1.config(delay=str(change[2])+'ms')
+            link[0].intf2.config(delay=str(change[2])+'ms')
+            print "[Info] the latency of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "ms"
+            if len(change) == 4:
+                link[0].intf1.config(bw=float(change[3]))
+                link[0].intf2.config(bw=float(change[3]))
+                print "[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[3]), "Mbps"
+
+    for change in capacity_changes:
+        node1 = "sat"+str(change[0]) if int(change[0]) < num_of_satellites else "gs"+str(int(change[0])%num_of_satellites)
+        node2 = "sat"+str(change[1]) if int(change[1]) < num_of_satellites else "gs"+str(int(change[1])%num_of_satellites)
+
+        net_node1 = net.getNodeByName(node1)
+        net_node2 = net.getNodeByName(node2)
+
+        if net.linksBetween(net_node1, net_node2):
+            link = net.linksBetween(net_node1, net_node2)
+            link[0].intf1.config(bw=float(change[2]))
+            link[0].intf2.config(bw=float(change[2]))
+            print "[Info] the capacity of link between ", str(node1), "and", str(node2), "has changed to", str(change[2]), "Mbps"
+
+    return net
+
+def iperf_app(path, net, main_configurations, list_of_Intf_IPs):
+    node1 = main_configurations["application"]["source"]
+    node2 = main_configurations["application"]["destination"]
+
+    net_node1 = net.getNodeByName(node1)
+    net_node2 = net.getNodeByName(node2)
+
+    source_ip = list_of_Intf_IPs[str(node2)+"-eth0"][0].split("/")[0]
+    iperf_command = "iperf -c "+str(source_ip)+" -p 5201 -i1 -t"+str(main_configurations["application"]["duration"])+ " > "+str(main_configurations["application"]["result_out"])+ " &"
+    # print iperf_command, node1, node2
+    net_node2.cmd("iperf -s -p 5201 > iperf_src_out &")
+    net_node1.cmd(iperf_command)
+
+    return net
+
+def ping_app(path, net, main_configurations, list_of_Intf_IPs):
+    node1 = main_configurations["application"]["source"]
+    node2 = main_configurations["application"]["destination"]
+
+    net_node1 = net.getNodeByName(node1)
+    net_node2 = net.getNodeByName(node2)
+
+    source_ip = list_of_Intf_IPs[str(node2)+"-eth0"][0].split("/")[0]
+    ping_command = "ping "+str(source_ip)+" > "+str(main_configurations["application"]["result_out"])+" &"
+    net_node1.cmd(ping_command)
+
+    return net
+
+def run_application(path, net, main_configurations, list_of_Intf_IPs):
+    if main_configurations["application"]["type"] == "iperf":
+        net = iperf_app(path, net, main_configurations, list_of_Intf_IPs)
+
+    if main_configurations["application"]["type"] == "ping":
+        net = ping_app(path, net, main_configurations, list_of_Intf_IPs)
+
+    return net
