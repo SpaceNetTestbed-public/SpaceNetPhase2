@@ -1,0 +1,15 @@
+# Template for constellation configurations
+# Constellation naming convention: <constellation_name><sat_count>_<interval_duration>_<interval_count>.yaml
+# Configuration for <Constellation_name>
+TotalSatCnt: <sat_count>
+TotalGSCnt: <gs_count>
+ConnectivityMatrixPath: /home/spacenet/mininet_test/connectivity_matrix/<constellation_path>/
+RoutingFilePath: /home/spacenet/mininet_test/routing/<constellation_path>/
+EpochIntervalDuration: <interval_duration>
+EpochIntervalCount: <interval_count>
+EpochStartYear: <TLE_start_year>
+EpochStartMonth: <TLE_start_month>
+EpochStartDay: <TLE_start_day>
+EpochStartHour: <TLE_start_hour>
+EpochStartMinute: <TLE_start_minute>
+EpochStartSecond: <TLE_start_second>
