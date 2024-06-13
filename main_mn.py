@@ -34,6 +34,7 @@ use_python_virtual_env = False
 use_management_net_messaging = False # requires use of node python script and python virtual environment
 use_yaml_config = True
 use_app_manager = True # Sim currently doesn't work if set to False
+use_connectivity_optimizer = True
 
 # ~~~~~~~~~~~~~~~~~~ GENERAL GLOBAL VARIABLES ~~~~~~~~~~~~~~~~~~
 
@@ -679,6 +680,10 @@ def main():
         exit()
 
     # Build topology with all satellites, ground stations, and links (then disable links as needed)
+    if use_connectivity_optimizer:
+        # Create ephemeral variants of the connectivity and routing files using only nodes that are part of the selected app
+        # Must ensure node names remain consistent between the original and ephemeral files
+        pass
 
     # Create nodes
     info("*** Creating nodes\n")
