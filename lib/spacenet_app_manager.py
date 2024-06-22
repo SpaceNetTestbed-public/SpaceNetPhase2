@@ -21,6 +21,9 @@ class AppManager:
         self.verbose = verbose
         self.app_object = None
 
+    def get_app_source_dest_devNames(self):
+        return self.app_source_devName, self.app_dest_devName
+    
     def select_app(self, appOptionsDict = None):
         if appOptionsDict is not None:
             app_name_list = ["Ping", "Iperf", "CLI"]

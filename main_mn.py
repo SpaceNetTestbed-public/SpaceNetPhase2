@@ -17,6 +17,7 @@ import time # for sleep
 import threading # for threading gRPC server
 import signal # for graceful termination of script (currently used only for FIFO loop)
 import sys # for command line arguments
+import re # for regex use in filename identification
 
 # ===== PYTHON VIRTUAL ENVIRONMENT =====
 #import os
@@ -34,13 +35,14 @@ use_python_virtual_env = False
 use_management_net_messaging = False # requires use of node python script and python virtual environment
 use_yaml_config = True
 use_app_manager = True # Sim currently doesn't work if set to False
-use_connectivity_optimizer = True
+use_connectivity_optimizer = False
 
 # ~~~~~~~~~~~~~~~~~~ GENERAL GLOBAL VARIABLES ~~~~~~~~~~~~~~~~~~
 
 # ===== GLOBAL VARIABLES =====
 global_verbose = True
 del_app_results = False # If True, delete app results files after printing results
+pause_before_run = True # If True, pause after building topology but before running the simulation
 output_path = "script_output/" # Path to store output files (both node script and app manager)
 
 # ================== Routing Option Variables ==================
@@ -273,13 +275,40 @@ def get_config_info():
     return sim_config, constellation_config, None
 
 # ================== Connectivity / Routing File Functions ==================
-def parse_connectivity_file(ConnectivityFileName):
+def find_file_in_directory_with_dtg(directory, prefix, suffix, target_datetime):
+    # Find the file in the specified directory with the specified prefix and suffix that matches the target date/time
+    # Returns the directory+filename if found, None otherwise
+    target_year = str(target_datetime.year)
+    target_month = str(target_datetime.month).lstrip('0')
+    target_day = str(target_datetime.day).lstrip('0')
+    target_hour = str(target_datetime.hour).lstrip('0')
+    target_minute = str(target_datetime.minute).lstrip('0')
+    target_second = str(target_datetime.second).lstrip('0')
+    if global_verbose:
+        print(f"Looking for file with date: {prefix}_{target_year}_{target_month}_{target_day}_{target_hour}_{target_minute}_{target_second}{suffix}")
+
+    # Define regex pattern to match the date in the filename along with specific prefix and suffix
+    file_pattern = re.compile(rf'{prefix}(\d{{1,4}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}}){suffix}')
+
+    for filename in os.listdir(directory):
+        match = file_pattern.match(filename)
+        if match:
+            file_year, file_month, file_day, file_hour, file_minute, file_second = match.groups()
+            if file_year == target_year and file_month.lstrip('0') == target_month and file_day.lstrip('0') == target_day and file_hour.lstrip('0') == target_hour.lstrip('0') and file_minute.lstrip('0') == target_minute.lstrip('0') and file_second.lstrip('0') == target_second:
+                return directory + filename
+    return None
+
+def parse_connectivity_file(ConnectivityFileName, nodeList = None):
     # Parse the connectivity file and return the connectivity matrix as a list of lists
 
     LinkDict = {}
     with open(ConnectivityFileName, 'r') as file:
         for line in file:
             SatAName, SatBName, LinkDelay, LinkBandwidth = line.split(',')
+            if nodeList is not None:
+                if SatAName not in nodeList or SatBName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
+                    print(f"Skipping link between {SatAName} and {SatBName} as one or both are not in the minimal node list")
+                    continue
             if int(SatAName) < int(SatBName):
                 LinkName = SatAName + "_" + SatBName
             else:
@@ -290,7 +319,7 @@ def parse_connectivity_file(ConnectivityFileName):
     
     return LinkDict
 
-def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration):
+def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, nodeList = None):
     # Parse all connectivity files in the specified path
     # Returns a dictionary with epoch number as key and connectivity matrix as value
     ConnectivityDict = {}
@@ -298,14 +327,17 @@ def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix,
     curEpochDateTime = EpochStart
     for _ in range(0, EpochIntervalCount):
         CurrEpochString = curEpochDateTime.strftime("%Y_%m_%d_%H_%M_%S")
-        ConnectivityFileName = ConnectivityMatrixPath + ConnectivityFilePrefix + CurrEpochString + ConnectivityFileSuffix
+        ConnectivityFileName = find_file_in_directory_with_dtg(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, curEpochDateTime)
+        if ConnectivityFileName is None:
+            print("Error: Could not find connectivity file for epoch ", CurrEpochString)
+            exit (1)
         print("Processing file: ", ConnectivityFileName)
-        ConnectivityDict[CurrEpochString] = parse_connectivity_file(ConnectivityFileName)
+        ConnectivityDict[CurrEpochString] = parse_connectivity_file(ConnectivityFileName, nodeList)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
 
     return ConnectivityDict
 
-def parse_interval_routing_file_no_implied_routes(RoutingFileName):
+def parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList = None):
     global devDict
     IntervalRoutesDict = {}
 
@@ -319,12 +351,18 @@ def parse_interval_routing_file_no_implied_routes(RoutingFileName):
             else:
                 if commaCount == 1: # target and destination are directly connected
                     sourceDevName, destDevName = line.split(',')
+                    if nodeList is not None:
+                        if sourceDevName not in nodeList or destDevName not in nodeList:
+                            continue
                     nextHopDevName = destDevName
                 else: # at least one interveneing hop between target and destination
                     routingEntry = line.split(',')
                     sourceDevName = routingEntry[0]
                     nextHopDevName = routingEntry[1]
                     destDevName = routingEntry[-1]
+                    if nodeList is not None:
+                        if sourceDevName not in nodeList or destDevName not in nodeList:
+                            continue
                 _, _, sourceDevIntfList = devDict[sourceDevName]
                 _, destDevManagementIP, _ = devDict[destDevName]
                 targetNetworkIP = destDevManagementIP
@@ -341,7 +379,7 @@ def parse_interval_routing_file_no_implied_routes(RoutingFileName):
     return IntervalRoutesDict
 
 # Assumes that reverse routes are not included in the routing file but still valid
-def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString):
+def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, nodeList = None):
     global devDict
     IntervalRoutesDict = {}
 
@@ -355,6 +393,11 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             else:
                 if commaCount == 1: # target and destination are directly connected
                     source1DevName, dest1DevName = line.split(',')
+                    if nodeList is not None:
+                        if source1DevName not in nodeList or dest1DevName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
+                            if global_verbose:
+                                print(f"Skipping link between {source1DevName} and {dest1DevName} as one or both are not in the minimal node list")
+                            continue
                     nextHop1DevName = dest1DevName
                     source2DevName = dest1DevName
                     nextHop2DevName = source1DevName
@@ -364,6 +407,9 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                     source1DevName = routingEntry[0]
                     nextHop1DevName = routingEntry[1]
                     dest1DevName = routingEntry[-1]
+                    if nodeList is not None:
+                        if source1DevName not in nodeList or dest1DevName not in nodeList:
+                            continue
                     source2DevName = routingEntry[-1] # Reverse route
                     nextHop2DevName = routingEntry[-2] # Reverse route
                     dest2DevName = routingEntry[0] # Reverse route
@@ -469,7 +515,7 @@ def parse_routing_file(RoutingFileName):
         PrevRoutingDict = CurrRoutingDict
         CurrRoutingDict = tempRoutingDict
 """
-def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt):
+def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, nodeList = None):
     # Parse all routing files in the specified path
     # Returns a dictionary with epoch number as key and routing information as value
     RoutingDict = {}
@@ -477,15 +523,18 @@ def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffi
     curEpochDateTime = EpochStart
     for _ in range(0, EpochIntervalCount):
         CurrEpochString = curEpochDateTime.strftime("%Y_%m_%d_%H_%M_%S")
-        RoutingFileName = RoutingFilePath + RoutingFilePrefix + CurrEpochString + RoutingFileSuffix
+        RoutingFileName = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, curEpochDateTime)
+        if RoutingFileName is None:
+            print("Error: Could not find routing file for epoch ", CurrEpochString)
+            exit (1)
         print("Processing file: ", RoutingFileName)
         if routing_files_imply_reverse_routes:
-            RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString)
+            RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, nodeList)
         else:
-            RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName)
+            RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
 
-    print("RoutingDict:\n", RoutingDict)
+    #print("RoutingDict:\n", RoutingDict)
     return RoutingDict
 
 # ================== Node Routing Functions ==================
@@ -634,6 +683,7 @@ def main():
         sim_config, constellation_config = get_config_info()
         
     constellationName = sim_config["ConstellationName"]
+    use_connectivity_optimizer = sim_config["Optimize"]
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
     TotalGSCnt = int(constellation_config["TotalGSCnt"])
     ConnectivityMatrixPath = constellation_config["ConnectivityMatrixPath"]
@@ -683,42 +733,65 @@ def main():
     if use_connectivity_optimizer:
         # Create ephemeral variants of the connectivity and routing files using only nodes that are part of the selected app
         # Must ensure node names remain consistent between the original and ephemeral files
-        pass
+        from lib import spacenet_connectivity_optimizer as spacenet_connectivity_optimizer
+        source_devName, dest_devName = appManager.get_app_source_dest_devNames()
+        if source_devName == None or dest_devName == None:
+            print("Error: Could not get source/dest device names from app manager")
+            exit(-1)
+        minimalNodeList = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName))
+        if global_verbose:
+            print("Minimal node list: ", minimalNodeList)
+        if minimalNodeList == None:
+            print("Error: Using connectivity optimizer but could not find minimal node list! Exiting...")
+            exit(-1)
+    else:
+        minimalNodeList = None
 
     # Create nodes
     info("*** Creating nodes\n")
-    for i in range(0, TotalSatCnt):
-        hostName = str(i)
-        hostIP = str(getNextSatIP())
-        hostObject = net.addHost(hostName, cls=LinuxRouter, ip=hostIP)
-        devDict[hostName] = (hostObject, hostIP, [])
-        print("Added satellite: ", hostName, " with management IP: ", hostIP)
-    for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt):
-        hostName = str(i)
-        hostIP = str(getNextGsIP())
-        hostObject = net.addHost(hostName, cls=LinuxRouter, ip=hostIP)
-        devDict[hostName] = (hostObject, hostIP, [])
-        print("Added ground station: ", hostName, " with management IP: ", hostIP)
+    if minimalNodeList:
+        for nodeName in minimalNodeList: # Sats and GSs are included in minimalNodeList
+            hostName = nodeName
+            if int(hostName) >= TotalSatCnt: # GS
+                hostIP = str(getNextGsIP())
+                nodeType = "ground station"
+            else: # Sat
+                hostIP = str(getNextSatIP())
+                nodeType = "satellite"
+            hostObject = net.addHost(hostName, cls=LinuxRouter, ip=hostIP)
+            devDict[hostName] = (hostObject, hostIP, [])
+            print(f"Added {nodeType}: {hostName}, with management IP {hostIP}")
+    else:
+        for i in range(0, TotalSatCnt):
+            hostName = str(i)
+            hostIP = str(getNextSatIP())
+            hostObject = net.addHost(hostName, cls=LinuxRouter, ip=hostIP)
+            devDict[hostName] = (hostObject, hostIP, [])
+            print("Added satellite: ", hostName, " with management IP: ", hostIP)
+        for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt):
+            hostName = str(i)
+            hostIP = str(getNextGsIP())
+            hostObject = net.addHost(hostName, cls=LinuxRouter, ip=hostIP)
+            devDict[hostName] = (hostObject, hostIP, [])
+            print("Added ground station: ", hostName, " with management IP: ", hostIP)
 
     # Compile links
     info("*** Compiling links from files\n")
     # AllLinksDict will contain all link statuses at every epoch
     # link_tracker will contain all links that have been created in the topology
     # We create all links before starting the network, then dynamically bring links up/down as needed
-    AllLinksDict = parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration) # Returns dictionary of format {epochString: {linkName: (linkDelay, linkBandwidth)}}
-    
+    AllLinksDict = parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, minimalNodeList) # Returns dictionary of format {epochString: {linkName: (linkDelay, linkBandwidth)}}    
     # Create links
     info("*** Creating links\n")
     link_tracker = []
     for epochString in AllLinksDict:
-
         epochLinksDict = AllLinksDict[epochString]
         for linkName in epochLinksDict:
             linkDelay, linkBandwidth = epochLinksDict[linkName] # ??Where does linkBandwidth get incorporated?
             if linkName not in link_tracker: # if this link hasn't yet been created in the topology
                 DevAhostName, DevBhostName = linkName.split("_")
-                DevAObject, DevAManagementIP, DevAIntfList = devDict[DevAhostName]
-                DevBObject, DevBManagementIP, DevBIntfList = devDict[DevBhostName]
+                DevAObject, _, _ = devDict[DevAhostName]
+                DevBObject, _, _ = devDict[DevBhostName]
                 if (int(DevAhostName) >= TotalSatCnt) or (int(DevBhostName) >= TotalSatCnt): # Identify whether this is a link to a GS
                     LinkNetworkIP = getNextGsLinkNetworkIP()
                 else:
@@ -735,7 +808,7 @@ def main():
 
     # Compile Routes
     info("*** Compiling routes from files\n")
-    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
+    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, minimalNodeList) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
 
     # Create management network
     if use_management_net_messaging:
@@ -779,6 +852,8 @@ def main():
             pass # TO DO:  Add links for just hardware nodes
 
     info("*** Starting network\n")
+    if pause_before_run:
+        input("Press Enter to start network...")
     net.start()
 
     if use_management_net_messaging:
@@ -959,6 +1034,8 @@ def main():
 
     # =================================================================
     EpochIntervalCounter += 1
+    if global_verbose:
+        print(f"[{current_second}] Simulating {len(devDict)} nodes")
     if appManager.app_sleeps(): # Interval duration skipped for CLI app
         print(f"[{current_second}] ~~~Sleeping for {EpochIntervalDuration} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
         time.sleep(EpochIntervalDuration)

@@ -1,8 +1,8 @@
 # Configuration for StarLink_10 (10 second coverage)
 TotalSatCnt: 72
 TotalGSCnt: 2
-ConnectivityMatrixPath: /home/spacenet/mininet_test/connectivity_matrix/starlink/
-RoutingFilePath: /home/spacenet/mininet_test/routing/starlink/
+ConnectivityMatrixPath: /home/spacenet/simulator/constellation-simulator-main/connectivity_matrix/starlink/
+RoutingFilePath: /home/spacenet/simulator/constellation-simulator-main/routing/starlink/
 EpochIntervalDuration: 1
 EpochIntervalCount: 10
 EpochStartYear: 2023

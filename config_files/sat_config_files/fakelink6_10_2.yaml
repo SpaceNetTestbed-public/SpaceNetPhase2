@@ -1,8 +1,8 @@
 # Configuration for FakeLink (6 sats, 20 seconds coverage)
 TotalSatCnt: 6
 TotalGSCnt: 2
-ConnectivityMatrixPath: /home/spacenet/mininet_test/connectivity_matrix/fakelink/
-RoutingFilePath: /home/spacenet/mininet_test/routing/fakelink/
+ConnectivityMatrixPath: /home/spacenet/simulator/constellation-simulator-main/connectivity_matrix/fakelink/
+RoutingFilePath: /home/spacenet/simulator/constellation-simulator-main/routing/fakelink/
 EpochIntervalDuration: 10
 EpochIntervalCount: 2
 EpochStartYear: 2023
