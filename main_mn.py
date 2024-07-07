@@ -347,7 +347,7 @@ def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix,
 
     return ConnectivityDict
 
-def parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList = None):
+def parse_interval_routing_file_no_implied_routes(RoutingFileName, route = None):
     global devDict
     IntervalRoutesDict = {}
 
@@ -361,8 +361,8 @@ def parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList = No
             else:
                 if commaCount == 1: # target and destination are directly connected
                     sourceDevName, destDevName = line.split(',')
-                    if nodeList is not None:
-                        if sourceDevName not in nodeList or destDevName not in nodeList:
+                    if route is not None:
+                        if sourceDevName not in route or destDevName not in route: # if we're using a minimal node list, don't create routes for devices not in the route list
                             continue
                     nextHopDevName = destDevName
                 else: # at least one interveneing hop between target and destination
@@ -370,8 +370,8 @@ def parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList = No
                     sourceDevName = routingEntry[0]
                     nextHopDevName = routingEntry[1]
                     destDevName = routingEntry[-1]
-                    if nodeList is not None:
-                        if sourceDevName not in nodeList or destDevName not in nodeList:
+                    if route is not None:
+                        if sourceDevName not in route or destDevName not in route:
                             continue
                 _, _, sourceDevIntfList = devDict[sourceDevName]
                 _, destDevManagementIP, _ = devDict[destDevName]
@@ -389,9 +389,9 @@ def parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList = No
     return IntervalRoutesDict
 
 # Assumes that reverse routes are not included in the routing file but still valid
-def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, sourceSat = None, destSat = None):
+def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, route = None):
     if global_verbose:
-        print(f"(parse_interval_routing_file) Parsing routing file: {RoutingFileName}, TotalSatCnt: {TotalSatCnt}, TotalGSCnt: {TotalGSCnt}, CurrEpochString: {CurrEpochString}, sourceSat: {sourceSat}, destSat: {destSat}")
+        print(f"(parse_interval_routing_file) Parsing routing file: {RoutingFileName}, TotalSatCnt: {TotalSatCnt}, TotalGSCnt: {TotalGSCnt}, CurrEpochString: {CurrEpochString}, route: {route}")
     global devDict
     IntervalRoutesDict = {}
 
@@ -403,19 +403,14 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             if commaCount == 0: # Ignore header line
                 pass
             else:
-                if global_verbose:
-                        print("\r\033[K", end="")
-                        print(f"\rProcessing line: {line}", end="")
+                #if global_verbose:
+                #    print("\r\033[K", end="") # Clear line
+                #    print(f"\rProcessing line: {line}", end="") # Print current line without trailing newline
                 if commaCount == 1: # target and destination are directly connected
                     source1DevName, dest1DevName = line.split(',')
-                    if sourceSat:
-                        if source1DevName != sourceSat or dest1DevName != destSat:
+                    if route: # if we're using a minimal node list, don't create routes for devices not in the route list
+                        if source1DevName != route or dest1DevName != route:
                             continue
-                    #if nodeList is not None:
-                    #    if source1DevName not in nodeList or dest1DevName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
-                            #if global_verbose:
-                            #    print(f"Skipping link between {source1DevName} and {dest1DevName} as one or both are not in the minimal node list")#, end="\r")
-                    #        continue
                     nextHop1DevName = dest1DevName
                     source2DevName = dest1DevName
                     nextHop2DevName = source1DevName
@@ -424,14 +419,9 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                     routingEntry = line.split(',')
                     source1DevName = routingEntry[0]
                     dest1DevName = routingEntry[-1]
-                    if sourceSat:
-                        if source1DevName != sourceSat or dest1DevName != destSat:
+                    if route: # if we're using a minimal node list, don't create routes for devices not in the route list
+                        if source1DevName != route or dest1DevName != route:
                             continue
-                    #if nodeList is not None:
-                    #    if source1DevName not in nodeList or dest1DevName not in nodeList:
-                            #if global_verbose:
-                                #print(f"Skipping link between {source1DevName} and {dest1DevName} as one or both are not in the minimal node list")#, end="\r")
-                    #        continue
                     nextHop1DevName = routingEntry[1]
                     source2DevName = routingEntry[-1] # Reverse route
                     nextHop2DevName = routingEntry[-2] # Reverse route
@@ -456,25 +446,24 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                         break
                 # Add routing entry to IntervalRoutesDict
                 if global_verbose:
-                    print(f"\nAdding routing entry for {source1DevName} to {target1NetworkIP} via {nextHop1IP} on interface {nextHop1IntfName}")
+                    print(f"Adding routing entry for {source1DevName} to {target1NetworkIP} via {nextHop1IP} on interface {nextHop1IntfName}")
                 if source1DevName not in IntervalRoutesDict:
                     IntervalRoutesDict[source1DevName] = {}
                 try:
                     IntervalRoutesDict[source1DevName][target1NetworkIP] = (nextHop1IP, nextHop1IntfName)
                 except UnboundLocalError:
-                    print(f"\nError: Missing interface information.  source1DevName: {source1DevName}, interfaces: {source1DevIntfList}; looking for link to next hop: {nextHop1DevName}\n")
+                    print(f"Error: Missing interface information.  source1DevName: {source1DevName}, interfaces: {source1DevIntfList}; looking for link to next hop: {nextHop1DevName}\n")
                     exit(1)
                 if source2DevName not in IntervalRoutesDict: # Reverse route
                     IntervalRoutesDict[source2DevName] = {}
                 try:
                     IntervalRoutesDict[source2DevName][target2NetworkIP] = (nextHop2IP, nextHop2IntfName)
                 except UnboundLocalError:
-                    print(f"\nError: Missing interface information.  source1DevName: {source2DevName}, interfaces: {source2DevIntfList}; looking for link to next hop: {nextHop2DevName}\n")
+                    print(f"Error: Missing interface information.  source1DevName: {source2DevName}, interfaces: {source2DevIntfList}; looking for link to next hop: {nextHop2DevName}\n")
                     abort()
                 #print("Added routing entry for ", sourceDevName, " to ", targetNetworkIP, " via ", nextHopIP, " on interface ", nextHopIntfName)
     
-    print("")
-    if sourceSat: # if we're using a minimal node list, don't create routes for devices not in the list
+    if route: # if we're using a minimal node list, don't create routes for devices not in the list
         print(f"Done")
         return IntervalRoutesDict
 
@@ -505,56 +494,8 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             IntervalRoutesDict[satName][gsNetworkIP] = (nextHopIP, satIntfName) # Add route for connected sat to GS
     
     return IntervalRoutesDict
-"""
-def parse_routing_file(RoutingFileName):
-    global CurrRoutingDict, PrevRoutingDict, devDict
-    tempRoutingDict = {}
 
-    with open(RoutingFileName, 'r') as file:
-        for line in file:
-            line = line.strip() # Remove leading/trailing whitespace and newlines
-            line = line.replace(' ', '') # Remove any remaining spaces
-            commaCount = line.count(',')
-            if commaCount == 0: # Ignore header line
-                pass
-            else:
-                if commaCount == 1: # target and destination are directly connected
-                    sourceDevName, destDevName = line.split(',')
-                    _, _, sourceDevIntfList = devDict[sourceDevName]
-                    _, destDevManagementIP, _ = devDict[destDevName]
-                    targetNetworkIP = destDevManagementIP
-                    for sourceDevIntfTuple in sourceDevIntfList:
-                        sourceDevIntfName, _, sourceDevDistHostName, sourceDevDistIntfIP = sourceDevIntfTuple
-                        if sourceDevDistHostName == destDevName:
-                            nextHopIntfName = sourceDevIntfName
-                            nextHopIP = sourceDevDistIntfIP.split('/')[0]
-                            break
-                else: # at least one interveneing hop between target and destination
-                    routingEntry = line.split(',')
-                    sourceDevName = routingEntry[0]
-                    nextHopDevName = routingEntry[1]
-                    destDevName = routingEntry[-1]
-                    _, _, sourceDevIntfList = devDict[sourceDevName]
-                    _, destDevManagementIP, _ = devDict[destDevName]
-                    targetNetworkIP = destDevManagementIP
-                    for sourceDevIntfTuple in sourceDevIntfList:
-                        sourceDevIntfName, _, sourceDevDistHostName, sourceDevDistIntfIP = sourceDevIntfTuple
-                        if sourceDevDistHostName == nextHopDevName:
-                            nextHopIntfName = sourceDevIntfName
-                            nextHopIP = sourceDevDistIntfIP.split('/')[0]
-                            break
-                # Add routing entry to tempRoutingDict
-                if sourceDevName not in tempRoutingDict:
-                    tempRoutingDict[sourceDevName] = []
-                tempRoutingDict[sourceDevName].append((targetNetworkIP, nextHopIP, nextHopIntfName))
-
-    if len(CurrRoutingDict) == 0:
-        CurrRoutingDict = tempRoutingDict
-    else:
-        PrevRoutingDict = CurrRoutingDict
-        CurrRoutingDict = tempRoutingDict
-"""
-def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, nodeList = None, endpointSatDict = None):
+def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict = None):
     # Parse all routing files in the specified path
     # Returns a dictionary with epoch number as key and routing information as value
     RoutingDict = {}
@@ -567,15 +508,14 @@ def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffi
             print("Error: Could not find routing file for epoch ", CurrEpochString)
             exit (1)
         print("(parse_all_routing_files) Processing file: ", RoutingFileName)
-        if endpointSatDict:
-            sourceSat, destSat = endpointSatDict[i]
+        if routeByIntervalDict is not None:
+            route = routeByIntervalDict[i]
         else:
-            sourceSat = None
-            destSat = None
+            route = None
         if routing_files_imply_reverse_routes:
-            RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, sourceSat, destSat)
+            RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, route)
         else:
-            RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, sourceSat, destSat)
+            RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, route)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
 
     #print("RoutingDict:\n", RoutingDict)
@@ -782,7 +722,7 @@ def main():
         if source_devName == None or dest_devName == None:
             print("Error: Could not get source/dest device names from app manager")
             exit(-1)
-        minimalNodeList, endpointSatDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName))
+        minimalNodeList, routeByIntervalDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName))
         if global_verbose:
             print("Minimal node list: ", minimalNodeList)
         if minimalNodeList == None:
@@ -852,7 +792,7 @@ def main():
 
     # Compile Routes
     info("\n*** Compiling routes from files\n")
-    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, minimalNodeList, endpointSatDict) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
+    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
 
     # Create management network
     if use_management_net_messaging:
@@ -1053,8 +993,11 @@ def main():
             gsRoutesIncluded = True    
             
     if not gsRoutesIncluded: # if the routing file does not contain routes for GS's
-        for gsNameInt in range(TotalSatCnt, TotalSatCnt + TotalGSCnt):
-            gsName = str(gsNameInt)
+        if use_connectivity_optimizer:
+            gsList = [source_devName, dest_devName]
+        else:
+            gsList = [str(gsNameInt) for gsNameInt in range(TotalSatCnt, TotalSatCnt + TotalGSCnt)]
+        for gsName in gsList:
             retVal = set_GS_default_route(gsName, CurrEpochString)
             if retVal == -1:
                 break
@@ -1184,8 +1127,11 @@ def main():
         if not gsRoutesIncluded: # if the routing file does not contain routes for GS's, set default route
             prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
             currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
-            for gsNameInt in range(TotalSatCnt, TotalSatCnt + TotalGSCnt):
-                gsName = str(gsNameInt)
+            if use_connectivity_optimizer:
+                gsList = [source_devName, dest_devName]
+            else:
+                gsList = [str(i) for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt)]
+            for gsName in gsList:
                 for prevLinkName in prevLinkNameList:
                     if gsName in prevLinkName:
                         break

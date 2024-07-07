@@ -91,47 +91,41 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
     EpochStart, EpochIntervalCount, EpochIntervalDuration = epochTuple
     # Parse all routing files to identify the minimal set of nodes that need to be connected to route between source and destination
     #minimalNodeList = sourceSatList + destinationSatList
-    minimalNodeList = []
-    for key in endpointSatDict:
-        sourceSat, destinationSat = endpointSatDict[key]
-        if sourceSat not in minimalNodeList:
-            minimalNodeList.append(sourceSat)
-        if destinationSat not in minimalNodeList:
-            minimalNodeList.append(destinationSat)
-    if global_verbose:
-        print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Initial Minimal Node List: {minimalNodeList}")
-    oldMinimalNodeListLen = 0
-    while len(minimalNodeList) != oldMinimalNodeListLen: # Continue until no new nodes are added; we loop to make sure we get all routes between intervening nodes as well
-        oldMinimalNodeListLen = len(minimalNodeList)
-        for i in range(EpochIntervalCount):
-            routingFile = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart + datetime.timedelta(seconds=(i * EpochIntervalDuration)))
-            if routingFile is None:
-                print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find routing file for epoch {i} at {EpochStart + datetime.timedelta(seconds=(i * EpochIntervalDuration))}")
-                return None
-            sourceSat, destinationSat = endpointSatDict[i]
-            with open(routingFile) as f:
-                for line in f:
-                    line = line.strip() # Remove leading/trailing whitespace
-                    line = line.replace (' ', '') # Remove spaces (if any)
-                    commaCount = line.count(',')
-                    if commaCount == 0: # Ignore header line
-                        continue
-                    lineElements = line.split(',')
-                    routeSourcenode = lineElements[0]
-                    routeDestnode = lineElements[-1]
-                    #if routeSourcenode in (sourceSatList + destinationSatList) and routeDestnode in (sourceSatList + destinationSatList):
-                    if routeSourcenode == sourceSat and routeDestnode == destinationSat:
-                    #if routeSourcenode in minimalNodeList and routeDestnode in minimalNodeList:
-                    #if (lineElements[0] == 'Source' and lineElements[-1] == 'Destination') or (lineElements[0] == 'Destination' and lineElements[-1] == 'Source'): # Have to check both ways because the order of the nodes can be reversed
-                        # Add intervening nodes to minimalNodeList if not already present
-                        for node in lineElements[1:-1]: # For all intervening nodes between source and destination nodes
-                            if node not in minimalNodeList:
-                                minimalNodeList.append(node)
-                                if global_verbose:
-                                    print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Adding node {node} to minimal node list", end="\r")
-    if global_verbose:
-        print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Final Minimal Node List: {minimalNodeList}")
-    return minimalNodeList
+    #minimalNodeList = []
+    #for key in endpointSatDict:
+    #    sourceSat, destinationSat = endpointSatDict[key]
+    #    if sourceSat not in minimalNodeList:
+    #        minimalNodeList.append(sourceSat)
+    #    if destinationSat not in minimalNodeList:
+    #        minimalNodeList.append(destinationSat)
+    #if global_verbose:
+    #    print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Initial Minimal Node List: {minimalNodeList}")
+    routeByIntervalDict = {}
+    for i in range(EpochIntervalCount):
+        routingFile = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart + datetime.timedelta(seconds=(i * EpochIntervalDuration)))
+        if routingFile is None:
+            print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find routing file for epoch {i} at {EpochStart + datetime.timedelta(seconds=(i * EpochIntervalDuration))}")
+            return None
+        sourceSat, destinationSat = endpointSatDict[i]
+        routeFound = False
+        with open(routingFile) as f:
+            for line in f:
+                line = line.strip() # Remove leading/trailing whitespace
+                line = line.replace (' ', '') # Remove spaces (if any)
+                commaCount = line.count(',')
+                if commaCount == 0: # Ignore header line
+                    continue
+                lineElements = line.split(',')
+                routeSourcenode = lineElements[0]
+                routeDestnode = lineElements[-1]
+                if (routeSourcenode == sourceSat and routeDestnode == destinationSat) or (routeSourcenode == destinationSat and routeDestnode == sourceSat):
+                    routeByIntervalDict[i] = lineElements # Store the route for this interval
+                    routeFound = True
+                    break
+        if not routeFound:
+            print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find route between {sourceSat} and {destinationSat} in routing file {routingFile}")
+            return None
+    return routeByIntervalDict
 
 # Items needed: source sat for all intervals, destination sat for all intervals, EpochStart, EpochIntervalCount, EpochIntervalDuration
 # Files needed: All connectivity files, all routing files
@@ -149,17 +143,19 @@ def find_minimal_node_list(connectivityFileTuple, routingFileTuple, epochTuple, 
     #if sourceSatList is None or destinationSatList is None:
     #    return None
     #minimalNodeList = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, sourceSatList, destinationSatList)
-    minimalNodeList = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointSatDict)
-    if minimalNodeList is None:
+    routeByIntervalDict = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointSatDict)
+    if routeByIntervalDict is None:
         return None
-    sourceNode, destNode = endpointTuple
-    if sourceNode not in minimalNodeList:
-        minimalNodeList.append(sourceNode)
-    if destNode not in minimalNodeList:
-        minimalNodeList.append(destNode)
+    sourceGS, destinationGS = endpointTuple
+    minimalNodeList = [sourceGS, destinationGS]
+    for key in routeByIntervalDict:
+        route = routeByIntervalDict[key]
+        for node in route:
+            if node not in minimalNodeList:
+                minimalNodeList.append(node)
     minimalNodeList.sort()
     if global_verbose:
         print(f"(spacenet_connectivity_optimizer:find_minimal_node_list) Minimal Node List Length: {len(minimalNodeList)}")
         print(f"(spacenet_connectivity_optimizer:find_minimal_node_list) Minimal Node List: {minimalNodeList}")
-    return minimalNodeList, endpointSatDict
+    return minimalNodeList, routeByIntervalDict
     
