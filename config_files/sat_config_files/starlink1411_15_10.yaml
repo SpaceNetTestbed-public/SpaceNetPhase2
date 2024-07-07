@@ -10,7 +10,7 @@ EpochStartMonth: 06
 EpochStartDay: 27
 EpochStartHour: 23
 EpochStartMinute: 24
-EpochStartSecond: 31
+EpochStartSecond: 0
 
 # Additional information to be edited for topology gen. (Phase 1)
 Debug: 1

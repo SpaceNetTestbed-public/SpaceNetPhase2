@@ -284,8 +284,10 @@ def find_file_in_directory_with_dtg(directory, prefix, suffix, target_datetime):
     target_hour = str(target_datetime.hour).lstrip('0')
     target_minute = str(target_datetime.minute).lstrip('0')
     target_second = str(target_datetime.second).lstrip('0')
+    if target_second == '': # If seconds is empty, set it to 0
+        target_second = '0'
     if global_verbose:
-        print(f"Looking for file with date: {prefix}_{target_year}_{target_month}_{target_day}_{target_hour}_{target_minute}_{target_second}{suffix}")
+        print(f"(find_file_in_directory_with_dtg) Looking for file with pattern: {prefix}{target_year}_{target_month}_{target_day}_{target_hour}_{target_minute}_{target_second}{suffix}: ", end="")
 
     # Define regex pattern to match the date in the filename along with specific prefix and suffix
     file_pattern = re.compile(rf'{prefix}(\d{{1,4}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}}){suffix}')
@@ -294,32 +296,40 @@ def find_file_in_directory_with_dtg(directory, prefix, suffix, target_datetime):
         match = file_pattern.match(filename)
         if match:
             file_year, file_month, file_day, file_hour, file_minute, file_second = match.groups()
-            if file_year == target_year and file_month.lstrip('0') == target_month and file_day.lstrip('0') == target_day and file_hour.lstrip('0') == target_hour.lstrip('0') and file_minute.lstrip('0') == target_minute.lstrip('0') and file_second.lstrip('0') == target_second:
+            if file_year == target_year and file_month.lstrip('0') == target_month and file_day.lstrip('0') == target_day and file_hour.lstrip('0') == target_hour and file_minute.lstrip('0') == target_minute and file_second.lstrip('0') == target_second.lstrip('0'):
+                if global_verbose:
+                    #print(f"\t(find_file_in_directory_with_dtg) Found file: {directory + filename}")
+                    print(f"OK")
                 return directory + filename
+    print(f"(find_file_in_directory_with_dtg) ERROR: Could not find file with date: {prefix}_{target_year}_{target_month}_{target_day}_{target_hour}_{target_minute}_{target_second}{suffix}")
     return None
 
-def parse_connectivity_file(ConnectivityFileName, nodeList = None):
+def parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList = None):
     # Parse the connectivity file and return the connectivity matrix as a list of lists
 
     LinkDict = {}
     with open(ConnectivityFileName, 'r') as file:
         for line in file:
-            SatAName, SatBName, LinkDelay, LinkBandwidth = line.split(',')
+            NodeAName, NodeBName, LinkDelay, LinkBandwidth = line.split(',')
             if nodeList is not None:
-                if SatAName not in nodeList or SatBName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
-                    print(f"Skipping link between {SatAName} and {SatBName} as one or both are not in the minimal node list")
+                if NodeAName not in nodeList or NodeBName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
+                    #print(f"Skipping link between {NodeAName} and {NodeBName} as one or both are not in the minimal node list", end="\r")
                     continue
-            if int(SatAName) < int(SatBName):
-                LinkName = SatAName + "_" + SatBName
+            if int(NodeAName) < int(NodeBName):
+                LinkName = NodeAName + "_" + NodeBName
             else:
-                LinkName = SatBName + "_" + SatAName
+                LinkName = NodeBName + "_" + NodeAName
             if LinkName not in LinkDict:
+                if global_verbose:
+                    # If either node value is greater than number of satelltes, its a GS
+                    if int(NodeAName) >= TotalSatCnt or int(NodeBName) >= TotalSatCnt:
+                        print(f"Adding link {LinkName} between GS {NodeAName} and Sat {NodeBName} with delay {LinkDelay} and bandwidth {LinkBandwidth}")
                 LinkDict[LinkName] = (LinkDelay, LinkBandwidth)
     print("Read ", len(LinkDict), " links from file")
     
     return LinkDict
 
-def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, nodeList = None):
+def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, nodeList = None):
     # Parse all connectivity files in the specified path
     # Returns a dictionary with epoch number as key and connectivity matrix as value
     ConnectivityDict = {}
@@ -332,7 +342,7 @@ def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix,
             print("Error: Could not find connectivity file for epoch ", CurrEpochString)
             exit (1)
         print("Processing file: ", ConnectivityFileName)
-        ConnectivityDict[CurrEpochString] = parse_connectivity_file(ConnectivityFileName, nodeList)
+        ConnectivityDict[CurrEpochString] = parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
 
     return ConnectivityDict
@@ -379,7 +389,9 @@ def parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList = No
     return IntervalRoutesDict
 
 # Assumes that reverse routes are not included in the routing file but still valid
-def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, nodeList = None):
+def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, sourceSat = None, destSat = None):
+    if global_verbose:
+        print(f"(parse_interval_routing_file) Parsing routing file: {RoutingFileName}, TotalSatCnt: {TotalSatCnt}, TotalGSCnt: {TotalGSCnt}, CurrEpochString: {CurrEpochString}, sourceSat: {sourceSat}, destSat: {destSat}")
     global devDict
     IntervalRoutesDict = {}
 
@@ -391,25 +403,36 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             if commaCount == 0: # Ignore header line
                 pass
             else:
+                if global_verbose:
+                        print("\r\033[K", end="")
+                        print(f"\rProcessing line: {line}", end="")
                 if commaCount == 1: # target and destination are directly connected
                     source1DevName, dest1DevName = line.split(',')
-                    if nodeList is not None:
-                        if source1DevName not in nodeList or dest1DevName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
-                            if global_verbose:
-                                print(f"Skipping link between {source1DevName} and {dest1DevName} as one or both are not in the minimal node list")
+                    if sourceSat:
+                        if source1DevName != sourceSat or dest1DevName != destSat:
                             continue
+                    #if nodeList is not None:
+                    #    if source1DevName not in nodeList or dest1DevName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
+                            #if global_verbose:
+                            #    print(f"Skipping link between {source1DevName} and {dest1DevName} as one or both are not in the minimal node list")#, end="\r")
+                    #        continue
                     nextHop1DevName = dest1DevName
                     source2DevName = dest1DevName
                     nextHop2DevName = source1DevName
                     dest2DevName = source1DevName
-                else: # at least one interveneing hop between target and destination
+                else: # at least one intervening hop between target and destination
                     routingEntry = line.split(',')
                     source1DevName = routingEntry[0]
-                    nextHop1DevName = routingEntry[1]
                     dest1DevName = routingEntry[-1]
-                    if nodeList is not None:
-                        if source1DevName not in nodeList or dest1DevName not in nodeList:
+                    if sourceSat:
+                        if source1DevName != sourceSat or dest1DevName != destSat:
                             continue
+                    #if nodeList is not None:
+                    #    if source1DevName not in nodeList or dest1DevName not in nodeList:
+                            #if global_verbose:
+                                #print(f"Skipping link between {source1DevName} and {dest1DevName} as one or both are not in the minimal node list")#, end="\r")
+                    #        continue
+                    nextHop1DevName = routingEntry[1]
                     source2DevName = routingEntry[-1] # Reverse route
                     nextHop2DevName = routingEntry[-2] # Reverse route
                     dest2DevName = routingEntry[0] # Reverse route
@@ -432,14 +455,29 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                         nextHop2IP = source2DevDistIntfIP.split('/')[0]
                         break
                 # Add routing entry to IntervalRoutesDict
+                if global_verbose:
+                    print(f"\nAdding routing entry for {source1DevName} to {target1NetworkIP} via {nextHop1IP} on interface {nextHop1IntfName}")
                 if source1DevName not in IntervalRoutesDict:
                     IntervalRoutesDict[source1DevName] = {}
-                IntervalRoutesDict[source1DevName][target1NetworkIP] = (nextHop1IP, nextHop1IntfName)
+                try:
+                    IntervalRoutesDict[source1DevName][target1NetworkIP] = (nextHop1IP, nextHop1IntfName)
+                except UnboundLocalError:
+                    print(f"\nError: Missing interface information.  source1DevName: {source1DevName}, interfaces: {source1DevIntfList}; looking for link to next hop: {nextHop1DevName}\n")
+                    exit(1)
                 if source2DevName not in IntervalRoutesDict: # Reverse route
                     IntervalRoutesDict[source2DevName] = {}
-                IntervalRoutesDict[source2DevName][target2NetworkIP] = (nextHop2IP, nextHop2IntfName)
+                try:
+                    IntervalRoutesDict[source2DevName][target2NetworkIP] = (nextHop2IP, nextHop2IntfName)
+                except UnboundLocalError:
+                    print(f"\nError: Missing interface information.  source1DevName: {source2DevName}, interfaces: {source2DevIntfList}; looking for link to next hop: {nextHop2DevName}\n")
+                    abort()
                 #print("Added routing entry for ", sourceDevName, " to ", targetNetworkIP, " via ", nextHopIP, " on interface ", nextHopIntfName)
     
+    print("")
+    if sourceSat: # if we're using a minimal node list, don't create routes for devices not in the list
+        print(f"Done")
+        return IntervalRoutesDict
+
     if str(TotalSatCnt) not in IntervalRoutesDict: # Routing file does not contain routes for GS's
         for gsNameInt in range(TotalSatCnt, TotalSatCnt + TotalGSCnt):
             gsName = str(gsNameInt)
@@ -450,6 +488,7 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                     break
             if satName == None:
                 print("Error: Could not find satellite connected to ground station ", gsName)
+                input("Press Enter to continue...")
                 return IntervalRoutesDict
             devList = list(IntervalRoutesDict.keys())
             devList.remove(satName) # Remove the satellite from the list of devices
@@ -515,23 +554,28 @@ def parse_routing_file(RoutingFileName):
         PrevRoutingDict = CurrRoutingDict
         CurrRoutingDict = tempRoutingDict
 """
-def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, nodeList = None):
+def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, nodeList = None, endpointSatDict = None):
     # Parse all routing files in the specified path
     # Returns a dictionary with epoch number as key and routing information as value
     RoutingDict = {}
 
     curEpochDateTime = EpochStart
-    for _ in range(0, EpochIntervalCount):
+    for i in range(0, EpochIntervalCount):
         CurrEpochString = curEpochDateTime.strftime("%Y_%m_%d_%H_%M_%S")
         RoutingFileName = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, curEpochDateTime)
         if RoutingFileName is None:
             print("Error: Could not find routing file for epoch ", CurrEpochString)
             exit (1)
-        print("Processing file: ", RoutingFileName)
-        if routing_files_imply_reverse_routes:
-            RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, nodeList)
+        print("(parse_all_routing_files) Processing file: ", RoutingFileName)
+        if endpointSatDict:
+            sourceSat, destSat = endpointSatDict[i]
         else:
-            RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, nodeList)
+            sourceSat = None
+            destSat = None
+        if routing_files_imply_reverse_routes:
+            RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, sourceSat, destSat)
+        else:
+            RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, sourceSat, destSat)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
 
     #print("RoutingDict:\n", RoutingDict)
@@ -545,7 +589,7 @@ def set_GS_default_route(gsName, CurrEpochString, gRPC_message = False):
             satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
             break
     if satName == None:
-        print("Error: Could not find satellite connected to ground station ", gsName)
+        print("(set_GS_default_route) Error: Could not find satellite connected to ground station ", gsName)
         return -1
     gsIntfList = devDict[gsName][2]
     nextHopIP = None
@@ -738,7 +782,7 @@ def main():
         if source_devName == None or dest_devName == None:
             print("Error: Could not get source/dest device names from app manager")
             exit(-1)
-        minimalNodeList = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName))
+        minimalNodeList, endpointSatDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName))
         if global_verbose:
             print("Minimal node list: ", minimalNodeList)
         if minimalNodeList == None:
@@ -780,7 +824,7 @@ def main():
     # AllLinksDict will contain all link statuses at every epoch
     # link_tracker will contain all links that have been created in the topology
     # We create all links before starting the network, then dynamically bring links up/down as needed
-    AllLinksDict = parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, minimalNodeList) # Returns dictionary of format {epochString: {linkName: (linkDelay, linkBandwidth)}}    
+    AllLinksDict = parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, minimalNodeList) # Returns dictionary of format {epochString: {linkName: (linkDelay, linkBandwidth)}}    
     # Create links
     info("*** Creating links\n")
     link_tracker = []
@@ -807,8 +851,8 @@ def main():
             
 
     # Compile Routes
-    info("*** Compiling routes from files\n")
-    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, minimalNodeList) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
+    info("\n*** Compiling routes from files\n")
+    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, minimalNodeList, endpointSatDict) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
 
     # Create management network
     if use_management_net_messaging:
@@ -1146,7 +1190,11 @@ def main():
                     if gsName in prevLinkName:
                         break
                 if prevLinkName not in currLinkNameList: # GS no longer connected to previous satellite
-                    gsObject = net.get(gsName)
+                    try:
+                        gsObject = net.get(gsName)
+                    except KeyError:
+                        print(f"Error: Ground station {gsName} not found in Mininet")
+                        exit(-1)
                     if (not use_node_python_script) or (not use_management_net_messaging): # if sending commands via Mininet API
                         command = 'ip route del 0/0'
                         if global_verbose:

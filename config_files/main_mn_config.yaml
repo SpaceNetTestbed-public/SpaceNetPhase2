@@ -10,7 +10,7 @@ AppName: Ping # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
 SourceDeviceName: firstGS
-DestDeviceName: lastGS
+DestDeviceName: 1435
 # For CLI
 CLIStartInterval: 0
 CLIIntervalCount: 0
