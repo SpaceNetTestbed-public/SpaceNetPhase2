@@ -13,4 +13,4 @@ SourceDeviceName: firstGS
 DestDeviceName: 1435
 # For CLI
 CLIStartInterval: 0
-CLIIntervalCount: 0
+CLIIntervalCount: 3

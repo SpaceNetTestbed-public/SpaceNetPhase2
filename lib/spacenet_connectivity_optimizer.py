@@ -155,7 +155,7 @@ def find_minimal_node_list(connectivityFileTuple, routingFileTuple, epochTuple, 
                 minimalNodeList.append(node)
     minimalNodeList.sort()
     if global_verbose:
-        print(f"(spacenet_connectivity_optimizer:find_minimal_node_list) Minimal Node List Length: {len(minimalNodeList)}")
         print(f"(spacenet_connectivity_optimizer:find_minimal_node_list) Minimal Node List: {minimalNodeList}")
+        print(f"(spacenet_connectivity_optimizer:find_minimal_node_list) Route by Interval Dictionary: {routeByIntervalDict}")
     return minimalNodeList, routeByIntervalDict
     

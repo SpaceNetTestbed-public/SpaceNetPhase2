@@ -42,7 +42,7 @@ use_connectivity_optimizer = False
 # ===== GLOBAL VARIABLES =====
 global_verbose = True
 del_app_results = False # If True, delete app results files after printing results
-pause_before_run = True # If True, pause after building topology but before running the simulation
+pause_before_run = False # If True, pause after building topology but before running the simulation
 output_path = "script_output/" # Path to store output files (both node script and app manager)
 
 # ================== Routing Option Variables ==================
@@ -323,7 +323,7 @@ def parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList = None):
                 if global_verbose:
                     # If either node value is greater than number of satelltes, its a GS
                     if int(NodeAName) >= TotalSatCnt or int(NodeBName) >= TotalSatCnt:
-                        print(f"Adding link {LinkName} between GS {NodeAName} and Sat {NodeBName} with delay {LinkDelay} and bandwidth {LinkBandwidth}")
+                        print(f"Adding GS link {LinkName} between Node {NodeAName} and Node {NodeBName} with delay {LinkDelay} and bandwidth {LinkBandwidth}")
                 LinkDict[LinkName] = (LinkDelay, LinkBandwidth)
     print("Read ", len(LinkDict), " links from file")
     
@@ -347,7 +347,7 @@ def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix,
 
     return ConnectivityDict
 
-def parse_interval_routing_file_no_implied_routes(RoutingFileName, route = None):
+def parse_interval_routing_file_no_implied_routes(RoutingFileName, route = None): # TO DO: Add minimalNodeList functionality!!
     global devDict
     IntervalRoutesDict = {}
 
@@ -409,7 +409,7 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                 if commaCount == 1: # target and destination are directly connected
                     source1DevName, dest1DevName = line.split(',')
                     if route: # if we're using a minimal node list, don't create routes for devices not in the route list
-                        if source1DevName != route or dest1DevName != route:
+                        if (source1DevName not in route) or (dest1DevName not in route):
                             continue
                     nextHop1DevName = dest1DevName
                     source2DevName = dest1DevName
@@ -420,7 +420,7 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                     source1DevName = routingEntry[0]
                     dest1DevName = routingEntry[-1]
                     if route: # if we're using a minimal node list, don't create routes for devices not in the route list
-                        if source1DevName != route or dest1DevName != route:
+                        if (source1DevName not in route) or (dest1DevName not in route):
                             continue
                     nextHop1DevName = routingEntry[1]
                     source2DevName = routingEntry[-1] # Reverse route
@@ -463,35 +463,50 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                     abort()
                 #print("Added routing entry for ", sourceDevName, " to ", targetNetworkIP, " via ", nextHopIP, " on interface ", nextHopIntfName)
     
-    if route: # if we're using a minimal node list, don't create routes for devices not in the list
-        print(f"Done")
-        return IntervalRoutesDict
-
-    if str(TotalSatCnt) not in IntervalRoutesDict: # Routing file does not contain routes for GS's
-        for gsNameInt in range(TotalSatCnt, TotalSatCnt + TotalGSCnt):
-            gsName = str(gsNameInt)
-            satName = None
-            for linkName in AllLinksDict[CurrEpochString]: # use AllLinksDict to find the satellite connected to the ground station
-                if gsName in linkName:
-                    satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
+    if route: # if we're using a minimal node list, don't create routes for devices not in the list, but still need to add GS nodes, if necessary
+        gsList = []
+        for devName in devDict:
+            if int(devName) >= TotalSatCnt:
+                if devName in IntervalRoutesDict:  # GS node are already in the route list, so skip
                     break
-            if satName == None:
-                print("Error: Could not find satellite connected to ground station ", gsName)
-                input("Press Enter to continue...")
-                return IntervalRoutesDict
-            devList = list(IntervalRoutesDict.keys())
+                gsList.append(devName)
+    else:
+        if str(TotalSatCnt) not in IntervalRoutesDict: # if GS nodes aren't in the route list [routing files don't have GS nodes in them], add them here
+            gsList = [str(i) for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt)]
+        else:
+            gsList = []
+    for gsName in gsList:
+        satName = None
+        for linkName in AllLinksDict[CurrEpochString]: # use AllLinksDict to find the satellite connected to the ground station
+            if gsName in linkName:
+                satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
+                break
+        if satName == None:
+            print("Error: Could not find satellite connected to ground station ", gsName)
+            input("Press Enter to continue...")
+            return IntervalRoutesDict
+        devList = list(IntervalRoutesDict.keys())
+        try:
             devList.remove(satName) # Remove the satellite from the list of devices
-            _, gsNetworkIP, _ = devDict[gsName] # Get GS Network IP
-            _, satNetworkIP, satIntfList = devDict[satName] # Get Satellite Network IP
-            for devName in devList:
-                nextHopIP, nextHopIntfName = IntervalRoutesDict[devName][satNetworkIP]
-                IntervalRoutesDict[devName][gsNetworkIP] = (nextHopIP, nextHopIntfName) # Add route to GS
-            for satIntfTuple in satIntfList:
-                satIntfName, _, distHostName, distIntfIP = satIntfTuple
-                if distHostName == gsName:
-                    nextHopIP = distIntfIP.split('/')[0]
-                    break
+        except ValueError:
+            pass # Skip if the satellite is not in the list
+        _, gsNetworkIP, _ = devDict[gsName] # Get GS Network IP
+        _, satNetworkIP, satIntfList = devDict[satName] # Get Satellite Network IP
+        for devName in devList:
+            nextHopIP, nextHopIntfName = IntervalRoutesDict[devName][satNetworkIP]
+            IntervalRoutesDict[devName][gsNetworkIP] = (nextHopIP, nextHopIntfName) # Add route to GS
+        for satIntfTuple in satIntfList:
+            satIntfName, _, distHostName, distIntfIP = satIntfTuple
+            if distHostName == gsName:
+                nextHopIP = distIntfIP.split('/')[0]
+                break
+        try:
             IntervalRoutesDict[satName][gsNetworkIP] = (nextHopIP, satIntfName) # Add route for connected sat to GS
+        except KeyError:
+            print(f"Error: Could not find satellite {satName} in IntervalRoutesDict")
+            print(f"IntervalRoutesDict: {IntervalRoutesDict}")
+            input("Press Enter to continue...")
+            return IntervalRoutesDict
     
     return IntervalRoutesDict
 
@@ -517,8 +532,6 @@ def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffi
         else:
             RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, route)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
-
-    #print("RoutingDict:\n", RoutingDict)
     return RoutingDict
 
 # ================== Node Routing Functions ==================
@@ -536,7 +549,7 @@ def set_GS_default_route(gsName, CurrEpochString, gRPC_message = False):
     for gsIntfTuple in gsIntfList:
         _, _, distHostName, distIntfIP = gsIntfTuple
         if satName.strip() == distHostName.strip():
-            nextHopIP = distIntfIP.split('/')[0]
+            nextHopIP = distIntfIP.split('/')[0] # get IP of satellite connected to ground station from GS interface list
             break
     if nextHopIP == None:
         print("Error: Could not find next hop IP for ground station ", gsName)
@@ -544,7 +557,7 @@ def set_GS_default_route(gsName, CurrEpochString, gRPC_message = False):
     if gRPC_message:
         return nextHopIP
     cmdString = 'route add default gw ' + nextHopIP
-    print(f"[{current_second}] set_GS_default_route:  Executing command on host " + gsName + ": ", cmdString)
+    print(f"[{current_second}] (set_GS_default_route) Executing command on host " + gsName + ": ", cmdString)
     devObject = devDict[gsName][0]
     devObject.cmd(cmdString)
     return 0
@@ -665,7 +678,10 @@ def main():
         global_verbose = bool(sim_config["Verbose"])
     else:
         sim_config, constellation_config = get_config_info()
-        
+
+    if global_verbose:
+        import pprint
+
     constellationName = sim_config["ConstellationName"]
     use_connectivity_optimizer = sim_config["Optimize"]
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
@@ -720,8 +736,9 @@ def main():
         from lib import spacenet_connectivity_optimizer as spacenet_connectivity_optimizer
         source_devName, dest_devName = appManager.get_app_source_dest_devNames()
         if source_devName == None or dest_devName == None:
-            print("Error: Could not get source/dest device names from app manager")
-            exit(-1)
+            print("Could not get source/dest device names from app manager; defaulting to first/second GS nodes")
+            source_devName = str(TotalSatCnt)
+            dest_devName = str(TotalSatCnt + 1)
         minimalNodeList, routeByIntervalDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName))
         if global_verbose:
             print("Minimal node list: ", minimalNodeList)
@@ -974,7 +991,10 @@ def main():
 
     # TO DO:  Allow this to be done via management network!!!
     #    Factors:  Nodes receiving this via management network must already be running their scripts
-    info("*** Configuring initial routing\n")
+    info("*** Setting initial routing statements\n")
+    if global_verbose:
+        print(f"Routing dict for epoch {CurrEpochString}:")
+        pprint.pprint(fullRoutingDict[CurrEpochString])
     #dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
     gsRoutesIncluded = False
     for deviceName in fullRoutingDict[CurrEpochString]: # for each device in the current epochs routing dictionary
@@ -1084,38 +1104,100 @@ def main():
                 linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth))
                 if global_verbose:
                     print(f"  [{current_second}] - Link ", linkName, " modified with delay ", linkDelay, " and bandwidth ", linkBandwidth)
-        info("  Links available in current epoch: ", str(linksToEnableList) + str(linksToContinueList) + "\n")
+        #info("  Links available in current epoch: ", str(linksToEnableList) + str(linksToContinueList) + "\n")
+        currentLinks = linksToEnableList | linksToContinueList
+        print(f"  Links available in current epoch: {str(sorted(currentLinks))}")
 
         info("*** Configuring routing\n")
+        if global_verbose:
+            print(f"  [{current_second}] Routing Dict for epoch {CurrEpochString}:")
+            pprint.pprint(fullRoutingDict[CurrEpochString])
         #dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
         prevRoutingDict = fullRoutingDict[PrevEpochString]
         currRoutingDict = fullRoutingDict[CurrEpochString]
         gsRoutesIncluded = False
-        for deviceName in currRoutingDict: # for each device in the current epochs routing dictionary
-            for targetNetworkIP in currRoutingDict[deviceName]:
-                nextHopTuple = currRoutingDict[deviceName][targetNetworkIP]
-                if nextHopTuple != prevRoutingDict[deviceName][targetNetworkIP]:
-                    devObject = net.get(deviceName)
-                    # Remove old route
+        if global_verbose:
+            print(f"Checking for routes to remove")
+        for deviceName in prevRoutingDict:
+            if deviceName not in currRoutingDict: # if this device is not in the current epoch's routing dictionary, so remove all of its routes and any routes that other devices had to it
+                print(f"  [{current_second}] Removing routes for device {deviceName}")
+                for targetNetworkIP in prevRoutingDict[deviceName]:
                     prevNextHopIp, prevNextHopIntfName = prevRoutingDict[deviceName][targetNetworkIP]
-                    if not use_node_python_script: # if sending commands via Mininet API
+                    devObject = net.get(deviceName)
+                    if not use_node_python_script:
                         cmdString = 'ip route del ' + targetNetworkIP + ' via ' + prevNextHopIp + ' dev ' + prevNextHopIntfName
                         if global_verbose:
                             print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
                         devObject.cmd(cmdString)
-                    elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                    elif use_management_net_messaging and not management_net_messaging_to_all:
                         pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
-                    elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands to all nodes via gRPC
+                    elif use_management_net_messaging and management_net_messaging_to_all:
                         gRPC_command = f"{targetNetworkIP} via {prevNextHopIp} dev {prevNextHopIntfName}"
                         message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
                         controller_node_relay_message_to_sat_node(deviceName, message)
-                    # Add new route
+                deviceNetworkIP = devDict[deviceName][1]
+                for otherDeviceName in currRoutingDict: # for each device in the current epochs routing dictionary
+                    if deviceNetworkIP in currRoutingDict[otherDeviceName]:
+                        nextHopIp, nextHopIntfName = currRoutingDict[otherDeviceName][deviceNetworkIP]
+                        devObject = net.get(otherDeviceName)
+                        if not use_node_python_script:
+                            cmdString = 'ip route del ' + deviceNetworkIP + ' via ' + nextHopIp + ' dev ' + nextHopIntfName
+                            if global_verbose:
+                                print(f"[{current_second}] Executing command on host " + otherDeviceName + ": ", cmdString)
+                            devObject.cmd(cmdString)
+                        elif use_management_net_messaging and not management_net_messaging_to_all:
+                            pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
+                        elif use_management_net_messaging and management_net_messaging_to_all:
+                            gRPC_command = f"{deviceNetworkIP} via {nextHopIp} dev {nextHopIntfName}"
+                            message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
+                            controller_node_relay_message_to_sat_node(otherDeviceName, message)   
+        if global_verbose:
+            print(f"Checking for routes to add/update")
+        for deviceName in currRoutingDict: # for each device in the current epochs routing dictionary
+            for targetNetworkIP in currRoutingDict[deviceName]:
+                nextHopTuple = currRoutingDict[deviceName][targetNetworkIP]
+                devHasPrevRoute = False
+                prevRouteNeedsChange = False
+                if deviceName in prevRoutingDict: # if this device was in the previous epoch's routing dictionary, check if the route has changed
+                    devHasPrevRoute = True
+                    if (targetNetworkIP in prevRoutingDict[deviceName]) and (nextHopTuple != prevRoutingDict[deviceName][targetNetworkIP]): # Had a route in the previous epoch and it has changed
+                        prevRouteNeedsChange = True
+                        # Remove old route
+                        if global_verbose:
+                            print(f"  [{current_second}] Removing old route for device {deviceName} to target network {targetNetworkIP}; changed to {nextHopTuple}")
+                        devObject = net.get(deviceName)
+                        if targetNetworkIP in prevRoutingDict[deviceName]:
+                            prevNextHopIp, prevNextHopIntfName = prevRoutingDict[deviceName][targetNetworkIP]
+                            if not use_node_python_script: # if sending commands via Mininet API
+                                cmdString = 'ip route del ' + targetNetworkIP + ' via ' + prevNextHopIp + ' dev ' + prevNextHopIntfName
+                                if global_verbose:
+                                    print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
+                                retval = devObject.cmd(cmdString + " 2> error.tmp")
+                                #if (retval != 0):
+                                #    print(f"Error: Could not remove route for device {deviceName} to target network {targetNetworkIP}. Details:")
+                                #    error = devObject.cmdPrint('cat error.tmp')
+                                #    if 'Cannot find device' in error:
+                                #        devObject.cmdPrint('ip link show')
+                            elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                                pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
+                            elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands to all nodes via gRPC
+                                gRPC_command = f"{targetNetworkIP} via {prevNextHopIp} dev {prevNextHopIntfName}"
+                                message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
+                                controller_node_relay_message_to_sat_node(deviceName, message)
+                # Now add new route if needed
+                if not devHasPrevRoute or prevRouteNeedsChange:
                     nextHopIP, nextHopIntfName = nextHopTuple
                     if not use_node_python_script: # if sending commands via Mininet API
+                        devObject = net.get(deviceName)
                         cmdString = 'ip route add ' + targetNetworkIP + ' via ' + nextHopIP + ' dev ' + nextHopIntfName
                         if global_verbose:
                             print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
-                        devObject.cmd(cmdString)
+                        retval = devObject.cmd(cmdString + " 2> error.tmp")
+                        #if (retval != 0):
+                        #    print(f"Error: Could not add route for device {deviceName} to target network {targetNetworkIP}. Details:")
+                        #    error = devObject.cmdPrint('cat error.tmp')
+                        #    if 'Cannot find device' in error:
+                        #        devObject.cmdPrint('ip link show')
                     elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
                         pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
                     elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
@@ -1124,7 +1206,7 @@ def main():
                         controller_node_relay_message_to_sat_node(deviceName, message)
             if int(deviceName) >= TotalSatCnt: # if this is a ground station
                 gsRoutesIncluded = True
-        if not gsRoutesIncluded: # if the routing file does not contain routes for GS's, set default route
+        if not gsRoutesIncluded: # if the routing file does not contain routes for GS's, set default routes for GS and routes for connected satellites, if needed
             prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
             currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
             if use_connectivity_optimizer:
@@ -1134,13 +1216,16 @@ def main():
             for gsName in gsList:
                 for prevLinkName in prevLinkNameList:
                     if gsName in prevLinkName:
-                        break
+                        break # find name of link to GS in previous epoch
                 if prevLinkName not in currLinkNameList: # GS no longer connected to previous satellite
+                    if global_verbose:
+                        print(f"  [{current_second}] Change in connected sat for ground station {gsName}")
                     try:
                         gsObject = net.get(gsName)
                     except KeyError:
                         print(f"Error: Ground station {gsName} not found in Mininet")
                         exit(-1)
+                    # Remove previous default route from GS
                     if (not use_node_python_script) or (not use_management_net_messaging): # if sending commands via Mininet API
                         command = 'ip route del 0/0'
                         if global_verbose:
@@ -1153,6 +1238,8 @@ def main():
                         nextHopIP = set_GS_default_route(gsName, CurrEpochString, gRPC_message = True)
                         message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_DFLT_ROUTE, "message": f"{nextHopIP}"}
                         controller_node_relay_message_to_sat_node(gsName, message)
+                    # Remove routes to GS from satellites
+
 
         if use_app_manager:
             appManager.rerun_app(EpochIntervalCounter) # Rerun app if needed (ie, CLI app)

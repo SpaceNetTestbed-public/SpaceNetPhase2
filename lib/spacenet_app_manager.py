@@ -74,9 +74,9 @@ class AppManager:
                 elif self.app_selection == "Iperf":
                     self.app_object = iperfApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.app_run_time, self.output_path, self.del_app_results, self.verbose)
             elif self.app_selection == "CLI":
-                print(f"(spacenet_app_manager:AppManager:select_app) Running CLI starting at interval {self.CLI_start_interval} for {self.CLI_interval_count} intervals.")
                 self.CLI_start_interval = appOptionsDict["CLIStartInterval"]
                 self.CLI_interval_count = appOptionsDict["CLIIntervalCount"]
+                print(f"(spacenet_app_manager:AppManager:select_app) Running CLI starting at interval {self.CLI_start_interval} for {self.CLI_interval_count} intervals.")
                 if (self.CLI_start_interval < 0) or (self.CLI_interval_count < 1):
                     print(f"(spacenet_app_manager:AppManager:select_app) Invalid CLI interval selection. Starting interval: {self.CLI_start_interval}; Interval count: {self.CLI_interval_count}.")
                     return
