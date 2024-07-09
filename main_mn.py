@@ -747,6 +747,7 @@ def main():
             exit(-1)
     else:
         minimalNodeList = None
+        routeByIntervalDict = None
 
     # Create nodes
     info("*** Creating nodes\n")
