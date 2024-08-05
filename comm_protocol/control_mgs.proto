@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+message control_msg {
+	optional string cmd_name = 1;
+	optional string cmd_receiver = 2;
+	optional string cmd = 3;
+	repeated Parameters cmd_param = 4;
+}
+
+message Parameters {
+	optional string arg1 = 1;
+	optional string arg2 = 2;
+	optional string arg3 = 3;
+        optional string arg4 = 4;
+	optional string arg5 = 5;
+        optional string arg6 = 6;
+	optional string arg7 = 7;
+        optional string arg8 = 8;
+}

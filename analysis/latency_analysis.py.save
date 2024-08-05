@@ -1,0 +1,16 @@
+## code written to post-process data from simulation
+#  this is specifically to read in the latency data that is produced by the code results
+#  contained in the results folder. The data comes in the following format (each line):
+#
+#  "PING ip address (ip address) 56(84) bytes of data." 	>>>>> first line
+# "64 bytes from (ip address): icmp_seq=1 ttl=63 time=95.1 ms"	>>>> rest of lines
+
+data = open("filename.txt", "r") # w = write, a = apphend
+lines = f.readlines()
+
+for line in lines
+
+index = 
+ttl = 
+timespan = 
+

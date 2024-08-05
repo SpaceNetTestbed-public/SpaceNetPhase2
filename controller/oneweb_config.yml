@@ -1,0 +1,43 @@
+constellation:
+    operator: oneweb
+    number_of_shells: 1
+    shell1:
+        name: shell1
+        orbits: 12
+        sat_per_orbit: 49
+        altitude: 1200
+        elevation_angle: 45
+        inclination: 87
+    topology:
+        association_criteria_GSL: BASED_ON_DISTANCE_ONLY_MININET
+        ISL: grid
+    routing:
+        algorithm: static_hop_count
+        ip_range: 11.0.0.0
+        interDomain_routing: 1
+        border_gateway: gs1
+        other_constellation_ip_range: 12.0.0.0
+
+ground_stations:
+    gs_file: ../mobility/ground_stations_experiments.txt
+
+simulation:
+    start_time: 2023,03,13,13,0,0
+    length: 10
+    step: 1
+    debug: 1
+
+application:
+    type: ping
+    source: gs0
+    destination: gs21
+    duration: 30
+    congestion_control: cubic
+    result_out: ../results/oneweb/ping_OneWeb_28-1Oct
+    background_traffic: no
+    tcpdump: no
+
+data_n_results:
+    connectivity_matrix: ../utils/connectivity_matrix/oneweb/
+    routing: ../utils/routing/oneweb/
+    simulation_results: ../results/oneweb
