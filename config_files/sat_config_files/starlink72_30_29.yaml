@@ -1,0 +1,13 @@
+# Configuration for StarLink72_30_29 (72 sats, 870 seconds coverage)
+TotalSatCnt: 72
+TotalGSCnt: 2
+ConnectivityMatrixPath: /home/spacenet/mininet_test/connectivity_matrix/starlink/
+RoutingFilePath: /home/spacenet/mininet_test/routing/starlink/
+EpochIntervalDuration: 30
+EpochIntervalCount: 29
+EpochStartYear: 2023
+EpochStartMonth: 09
+EpochStartDay: 13
+EpochStartHour: 07
+EpochStartMinute: 45
+EpochStartSecond: 50

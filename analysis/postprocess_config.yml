@@ -1,7 +1,0 @@
-mean_and_stddev:
-    data_file:  ping_Longest_Association_GRID_GS5_GS12
-    test_type:  ping
-    input_dir:  
-    output_dir: plots/
-    save_plot:  False
-    threads:    2

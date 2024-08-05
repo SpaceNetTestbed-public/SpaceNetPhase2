@@ -1,0 +1,13 @@
+# Configuration for OneFib
+TotalSatCnt: 66
+TotalGSCnt: 2
+ConnectivityMatrixPath: /home/spacenet/mininet_test/connectivity_matrix/onefib/
+RoutingFilePath: /home/spacenet/mininet_test/routing/onefib/
+EpochIntervalDuration: 30
+EpochIntervalCount: 18
+EpochStartYear: 2023
+EpochStartMonth: 09
+EpochStartDay: 13
+EpochStartHour: 07
+EpochStartMinute: 46
+EpochStartSecond: 50

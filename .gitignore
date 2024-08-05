@@ -1,12 +1,3 @@
-results/
-utils/connectivity_matrix
-utils/connectivity_matrix_distance_only_2
-utils/connectivity_matrix_distance_only_last
-utils/connectivity_matrix_longest_assoication
-utils/routing
-utils/routing_distance_only
-utils/routing_new
-utils/satellites_orbits
-utils/starlink
-utils/connectivity_matrix_new
-
+script_output/*.*
+__pycache__/*
+lib/__pycache__/*
