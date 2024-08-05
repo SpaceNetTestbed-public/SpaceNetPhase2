@@ -1,0 +1,5 @@
+# Ensure gRPC tools are installed on the current machine:
+python3 -m pip install grpcio grpcio-tools
+
+Generate python protobuf files (generating from file: messaging.proto):
+python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. <proto_filename.proto>

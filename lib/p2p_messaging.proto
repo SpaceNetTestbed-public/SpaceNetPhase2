@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+service P2PService {
+    rpc PeerMessage(PeerRequest) returns (PeerReply) {}
+}
+
+message PeerRequest {
+    string message = 1;
+}
+
+message PeerReply {
+    string message = 1;
+}
