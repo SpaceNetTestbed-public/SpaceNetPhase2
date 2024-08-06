@@ -1,0 +1,49 @@
+constellation:
+    operator: starlink
+    number_of_shells: 1
+    shell1:
+        name: shell1
+        orbits: 72
+        sat_per_orbit: 22
+        altitude: 550
+        elevation_angle: 25
+        inclination: 53
+    topology:
+        association_criteria_GSL: BASED_ON_DISTANCE_ONLY_MININET
+        ISL: grid
+    routing:
+        algorithm: static_latency
+        ip_range: 12.0.0.0
+        interDomain_routing: 0
+        border_gateway: gs220
+        other_constellation_ip_range: 11.0.0.0
+
+ground_stations:
+    gs_file: ../mobility/ground_stations_experiments.txt
+
+simulation:
+    start_time: 2023,03,13,13,2,30
+    length: 40
+    step: 1
+    debug: 1
+
+application:
+    type: iperf
+    source: gs12
+    destination: gs5
+    duration: 40
+    congestion_control: cubic
+    result_out: /mnt/ssung_pro_1/mn_results/starlink/analysis_results/iperf_test_GS12to5
+    background_traffic: no
+    tcpdump: no
+
+resiliency:
+  type: takedown
+  affected_satellites: ["sat198", "sat454"]
+  s_timestamps: ["2022,12,30,14,0,50", "2022,12,30,14,0,50"]
+  e_timestamps: ["2022,12,30,14,1,20", "2022,12,30,14,1,20"]
+
+data_n_results:
+    connectivity_matrix: /mnt/ssung_pro_1/mn_results/starlink/connectivity/
+    routing: /mnt/ssung_pro_1/mn_results/starlink/routing/
+    simulation_results: /mnt/ssung_pro_1/mn_results/starlink/results/
