@@ -280,19 +280,36 @@ def find_file_in_directory_with_dtg(directory, prefix, suffix, target_datetime):
     target_month = str(target_datetime.month).lstrip('0')
     target_day = str(target_datetime.day).lstrip('0')
     target_hour = str(target_datetime.hour).lstrip('0')
+    if target_hour == '': # If hours is empty, set to 0
+        target_hour = '0'
     target_minute = str(target_datetime.minute).lstrip('0')
+    if target_minute == '': # If minutes is empty, set to 0
+        target_minute = '0'
     target_second = str(target_datetime.second).lstrip('0')
+    if target_second == '': # If seconds is empty, set to 0
+        target_second = '0'
     if global_verbose:
-        print(f"Looking for file with date: {prefix}_{target_year}_{target_month}_{target_day}_{target_hour}_{target_minute}_{target_second}{suffix}")
+        print(f"Looking for file with date: {prefix}{target_year}_{target_month}_{target_day}_{target_hour}_{target_minute}_{target_second}{suffix}")
 
     # Define regex pattern to match the date in the filename along with specific prefix and suffix
     file_pattern = re.compile(rf'{prefix}(\d{{1,4}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}})_(\d{{1,2}}){suffix}')
-
+    
     for filename in os.listdir(directory):
         match = file_pattern.match(filename)
         if match:
             file_year, file_month, file_day, file_hour, file_minute, file_second = match.groups()
-            if file_year == target_year and file_month.lstrip('0') == target_month and file_day.lstrip('0') == target_day and file_hour.lstrip('0') == target_hour.lstrip('0') and file_minute.lstrip('0') == target_minute.lstrip('0') and file_second.lstrip('0') == target_second:
+            file_month = file_month.lstrip('0')
+            file_day = file_day.lstrip('0')
+            file_hour = file_hour.lstrip('0')
+            if file_hour == '': # If hours is empty, set to 0
+                file_hour = '0'
+            file_minute = file_minute.lstrip('0')
+            if file_minute == '': # If minutes is empty, set to 0
+                file_minute = '0'
+            file_second = file_second.lstrip('0')
+            if file_second == '': # If seconds is empty, set to 0
+                file_second = '0'
+            if file_year == target_year and file_month.lstrip('0') == target_month and file_day.lstrip('0') == target_day and file_hour.lstrip('0') == target_hour.lstrip('0') and file_minute.lstrip('0') == target_minute.lstrip('0') and file_second == target_second:
                 return directory + filename
     return None
 
