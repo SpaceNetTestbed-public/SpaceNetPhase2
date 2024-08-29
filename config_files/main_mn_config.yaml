@@ -1,16 +1,16 @@
 # Main configuration script for the SpaceNet Mininet Simulator
 # ~~~ Main Settings ~~~
-ConstellationName: starlink1411_15_10 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
+ConstellationName: starlink400_5_5 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
 OutputFilePath: script_output/
 DeleteAppResults: False
 Verbose: True
 Optimize: True
 # ~~~ App configurations ~~~
-AppName: Ping # Options- Ping, iPerf, CLI
+AppName: CLI # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
-SourceDeviceName: firstGS
-DestDeviceName: 1435
+SourceDeviceName: 425
+DestDeviceName: 661
 # For CLI
 CLIStartInterval: 0
 CLIIntervalCount: 3

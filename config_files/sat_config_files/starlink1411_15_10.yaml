@@ -11,6 +11,8 @@ EpochStartDay: 27
 EpochStartHour: 23
 EpochStartMinute: 24
 EpochStartSecond: 0
+# ~~~ Optimizer configurations ~~~
+NodeIndexFilePath: /home/spacenet/Desktop/spacenet_files/output/node_indices/starlink/
 
 # Additional information to be edited for topology gen. (Phase 1)
 Debug: 1

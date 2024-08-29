@@ -5,6 +5,7 @@ TotalSatCnt: <sat_count>
 TotalGSCnt: <gs_count>
 ConnectivityMatrixPath: /home/spacenet/mininet_test/connectivity_matrix/<constellation_path>/
 RoutingFilePath: /home/spacenet/mininet_test/routing/<constellation_path>/
+NodeIndexFilePath: /home/spacenet/mininet_test/output/node_indices/<constellation_path>/
 EpochIntervalDuration: <interval_duration>
 EpochIntervalCount: <interval_count>
 EpochStartYear: <TLE_start_year>

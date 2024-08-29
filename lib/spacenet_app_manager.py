@@ -25,6 +25,17 @@ class AppManager:
         return self.app_source_devName, self.app_dest_devName
     
     def select_app(self, appOptionsDict = None):
+        def resolve_keywords(devName):
+            if devName == "firstGS":
+                return self.total_sat_count
+            elif devName == "firstSat":
+                return 0
+            elif devName == "lastGS":
+                return self.total_sat_count + self.total_gs_count - 1
+            elif devName == "lastSat":
+                return self.total_sat_count - 1
+            else:
+                return devName
         if appOptionsDict is not None:
             app_name_list = ["Ping", "Iperf", "CLI"]
             selection = appOptionsDict["AppName"]
@@ -40,26 +51,12 @@ class AppManager:
             if self.app_selection == "Ping" or self.app_selection == "Iperf":
                 self.app_source_devName = appOptionsDict["SourceDeviceName"]
                 self.app_dest_devName = appOptionsDict["DestDeviceName"]
-                if self.app_source_devName == "firstGS":
-                    self.app_source_devName = self.total_sat_count
-                elif self.app_source_devName == "firstSat":
-                    self.app_source_devName = 0
-                elif self.app_source_devName == "lastGS":
-                    self.app_source_devName = self.total_sat_count + self.total_gs_count - 1
-                elif self.app_source_devName == "lastSat":
-                    self.app_source_devName = self.total_sat_count - 1
-                elif self.app_source_devName < 0 or self.app_source_devName >= self.total_sat_count + self.total_gs_count:
+                self.app_source_devName = resolve_keywords(self.app_source_devName)
+                if self.app_source_devName < 0 or self.app_source_devName >= self.total_sat_count + self.total_gs_count:
                     print(f"(spacenet_app_manager:AppManager:select_app) Invalid source device selection. Given: {self.app_source_devName}; Acceptable options: 0 - {self.total_sat_count + self.total_gs_count - 1}.")
                     return
-                if self.app_dest_devName == "firstGS":
-                    self.app_dest_devName = self.total_sat_count
-                elif self.app_dest_devName == "firstSat":
-                    self.app_dest_devName = 0
-                elif self.app_dest_devName == "lastGS":
-                    self.app_dest_devName = self.total_sat_count + self.total_gs_count - 1
-                elif self.app_dest_devName == "lastSat":
-                    self.app_dest_devName = self.total_sat_count - 1
-                elif self.app_dest_devName < 0 or self.app_dest_devName >= self.total_sat_count + self.total_gs_count or self.app_dest_devName == self.app_source_devName:
+                self.app_dest_devName = resolve_keywords(self.app_dest_devName)
+                if self.app_dest_devName < 0 or self.app_dest_devName >= self.total_sat_count + self.total_gs_count or self.app_dest_devName == self.app_source_devName:
                     print(f"(spacenet_app_manager:AppManager:select_app) Invalid destination device selection. Given: {self.app_dest_devName}; Acceptable options: 0 - {self.total_sat_count + self.total_gs_count - 1} excluding source device {self.app_source_devName}.")
                     return
                 if self.app_dest_devName == self.app_source_devName:
@@ -76,6 +73,13 @@ class AppManager:
             elif self.app_selection == "CLI":
                 self.CLI_start_interval = appOptionsDict["CLIStartInterval"]
                 self.CLI_interval_count = appOptionsDict["CLIIntervalCount"]
+                # Add source and destination nodes if specified (not required for CLI)
+                if "SourceDeviceName" in appOptionsDict:
+                    self.app_source_devName = appOptionsDict["SourceDeviceName"]
+                    self.app_source_devName = resolve_keywords(self.app_source_devName)
+                if "DestDeviceName" in appOptionsDict:
+                    self.app_dest_devName = appOptionsDict["DestDeviceName"]
+                    self.app_dest_devName = resolve_keywords(self.app_dest_devName)
                 print(f"(spacenet_app_manager:AppManager:select_app) Running CLI starting at interval {self.CLI_start_interval} for {self.CLI_interval_count} intervals.")
                 if (self.CLI_start_interval < 0) or (self.CLI_interval_count < 1):
                     print(f"(spacenet_app_manager:AppManager:select_app) Invalid CLI interval selection. Starting interval: {self.CLI_start_interval}; Interval count: {self.CLI_interval_count}.")
