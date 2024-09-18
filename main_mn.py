@@ -18,6 +18,9 @@ import threading # for threading gRPC server
 import signal # for graceful termination of script (currently used only for FIFO loop)
 import sys # for command line arguments
 import re # for regex use in filename identification
+import multiprocessing
+import atexit
+from resource_monitor.top_logger import TOP_LOGGER
 
 # ===== PYTHON VIRTUAL ENVIRONMENT =====
 #import os
@@ -687,6 +690,7 @@ def main():
 
     constellationName = sim_config["ConstellationName"]
     use_connectivity_optimizer = sim_config["Optimize"]
+    run_resource_logger = sim_config["MonitorResource"] if "MonitorResource" in sim_config else False
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
     TotalGSCnt = int(constellation_config["TotalGSCnt"])
     ConnectivityMatrixPath = constellation_config["ConnectivityMatrixPath"]
@@ -710,6 +714,15 @@ def main():
     ConnectivityFileSuffix = ".0.txt"
     RoutingFilePrefix = "routes_"
     RoutingFileSuffix = ".0.txt"
+
+    if run_resource_logger:
+        print("\n.......... Initiating resource logger")
+        resource_log_process = multiprocessing.Process(target=TOP_LOGGER, args=(1, r"script_output/", 'mn_1584_10_10'))
+        resource_log_process.start()
+        atexit.register(lambda: os.kill(resource_log_process.pid, signal.SIGTERM))
+        time.sleep(10)
+
+    t0_mn = time.perf_counter_ns()
 
     # =================================================================
     net = Mininet(controller=None)
@@ -765,6 +778,7 @@ def main():
     # Create nodes
     info("*** Creating nodes\n")
     if minimalNodeList:
+        print(minimalNodeList)
         for nodeName in minimalNodeList: # Sats and GSs are included in minimalNodeList
             hostName = nodeName
             if int(hostName) >= TotalSatCnt: # GS
@@ -819,7 +833,7 @@ def main():
                 link_tracker.append(linkName)
                 devDict[DevAhostName][2].append((DevAIntfName, DevAIntfIP, DevBhostName, DevBIntfIP)) # add link to device A interface list
                 devDict[DevBhostName][2].append((DevBIntfName, DevBIntfIP, DevAhostName, DevAIntfIP)) # add link to device B interface list
-            
+    print(devDict) 
     # Compile Routes
     info("\n*** Compiling routes from files\n")
     fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
@@ -1350,6 +1364,11 @@ def main():
 
     info("*** Stopping network")
     net.stop()
+
+    if run_resource_logger:
+        os.kill(resource_log_process.pid, signal.SIGTERM)
+
+    print("EMU RUNTIME: " + str((time.perf_counter_ns() - t0_mn)*1e-9))
 
     exit()
 

@@ -153,6 +153,8 @@ def parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTupl
                 return None, None
         intervalConnectingNodeDict[intervalNum] = (sourceNodeConnectingNodeList, destinationNodeConnectingNodeList)
         if global_verbose: print(f"(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) Interval {intervalNum} Connecting Node Dictionary: {intervalConnectingNodeDict[intervalNum]}")
+        sourceNodeConnectingNodeList = [] # Now reset the connecting node lists for the next time increment
+        destinationNodeConnectingNodeList = []
     if global_verbose:
         print(f"Source Node Connecting List: {sourceNodeConnectingNodeList}")
         print(f"Destination Node Connecting List: {destinationNodeConnectingNodeList}")
@@ -161,10 +163,10 @@ def parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTupl
     #return sourceSatList, destinationSatList
 
 #def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, sourceSatList, destinationSatList):
-def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointNodeIntervalDict):
+def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointConnectingNodeByIntervalDict):
     if global_verbose:
         #print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, source satellites: {sourceSatList}, destination satellites: {destinationSatList}")
-        print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, endpoint connecting nodes: {endpointNodeIntervalDict}")
+        print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, endpoint connecting nodes by interval: {endpointConnectingNodeByIntervalDict}")
     RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix = routingFileTuple
     EpochStart, EpochIntervalCount, EpochIntervalDuration = epochTuple
     # Parse all routing files to identify the minimal set of nodes that need to be connected to route between source and destination
@@ -184,7 +186,7 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
         if routingFile is None:
             print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find routing file for epoch {epochIntervalNum} at {EpochStart + datetime.timedelta(seconds=(epochIntervalNum * EpochIntervalDuration))}{end_color_string}")
             return None
-        sourceConnectingNodeList, destinationConnectingNodeList = endpointNodeIntervalDict[epochIntervalNum]
+        sourceConnectingNodeList, destinationConnectingNodeList = endpointConnectingNodeByIntervalDict[epochIntervalNum]
         sourceConnectingNode = sourceConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and source node)
         destinationConnectingNode = destinationConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and destination node)
         routeFound = False
@@ -201,9 +203,9 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
                 if (routeSourcenode == sourceConnectingNode and routeDestnode == destinationConnectingNode) or (routeSourcenode == destinationConnectingNode and routeDestnode == sourceConnectingNode): # Found the route between the source and destination nodes (or vice versa)
                     routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
                     if len(sourceConnectingNodeList) > 1:
-                        routeByIntervalDict[epochIntervalNum].append(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
+                        routeByIntervalDict[epochIntervalNum].extend(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
                     if len(destinationConnectingNodeList) > 1:
-                        routeByIntervalDict[epochIntervalNum].append(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
+                        routeByIntervalDict[epochIntervalNum].extend(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
                     routeFound = True
                     break
         if not routeFound:
@@ -225,22 +227,29 @@ def find_minimal_node_list(connectivityFileTuple, routingFileTuple, epochTuple, 
     if global_verbose:
         print(f"(spacenet_connectivity_optimizer:find_minimal_node_list) connectivity files: {connectivityFileTuple}, routing files: {routingFileTuple}, epoch details: {epochTuple}, endpoint details: {endpointTuple}")
     #sourceSatList, destinationSatList = parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTuple, endpointTuple)
-    endpointNodeDict = parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTuple, endpointTuple, nodeIndexDict)
-    if endpointNodeDict is None:
+    endpointConnectingNodeByIntervalDict = parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTuple, endpointTuple, nodeIndexDict)
+    if endpointConnectingNodeByIntervalDict is None:
         return None, None
     #if sourceSatList is None or destinationSatList is None:
     #    return None
     #minimalNodeList = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, sourceSatList, destinationSatList)
-    routeByIntervalDict = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointNodeDict)
+    routeByIntervalDict = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointConnectingNodeByIntervalDict)
     if routeByIntervalDict is None:
         return None, None
     sourceNode, destinationNode = endpointTuple
     minimalNodeList = [sourceNode, destinationNode]
     for interval in routeByIntervalDict.keys():
         route = routeByIntervalDict[interval]
+        #DEBUG
+        print(f"{start_color_string}{color_red}routeByIntervalDict[{interval}]: {route}{end_color_string}")
+        #END DEBUG
         for node in route:
             if node not in minimalNodeList:
                 minimalNodeList.append(node)
+    # DEBUG
+    print(f"{start_color_string}{color_yellow}Raw minimalNodeList: {minimalNodeList}{end_color_string}")
+    # END DEBUG
+    minimalNodeList = list(set(minimalNodeList)) # to ensure no duplicate nodes
     if global_verbose:
         print(f"{start_color_string}{color_green}(spacenet_connectivity_optimizer:find_minimal_node_list) Minimal Node List: {minimalNodeList}{end_color_string}")
         print(f"{start_color_string}{color_green}(spacenet_connectivity_optimizer:find_minimal_node_list) Route by Interval Dictionary: {routeByIntervalDict}{end_color_string}")

@@ -224,9 +224,11 @@ class pingApp:
         if self.verbose:
             print(f"Pinging from {self.app_source_ip} to {self.app_dest_ip}")
         if self.use_bash_script:
-            cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(self.app_run_time)} > {self.output_path}{self.output_filename} 2>&1 &"
+            #cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(self.app_run_time)} > {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(100000)} > {self.output_path}{self.output_filename} 2>&1 &"
         else:
-            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(self.app_run_time)} > {self.output_path}{self.output_filename} 2>&1 &"
+            #cmdString = f"ping {self.app_dest_ip} -v -O -w {str(self.app_run_time)} > {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(100000)} > {self.output_path}{self.output_filename} 2>&1 &"
         if self.verbose:
             print(f"{self.app_source_devName}: {cmdString}")
         self.app_source_object.popen(cmdString, shell=True) # Have to use popen to run in background; cmd hangs on subsequent commands
