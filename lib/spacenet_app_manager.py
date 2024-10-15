@@ -183,6 +183,12 @@ class AppManager:
             return
         self.app_object.start(current_interval)
 
+    def get_output_file_and_path(self):
+        return self.app_object.get_output_file_and_path()
+    
+    def print_to_output_file(self, output_text):
+        self.app_object.print_to_output_file(output_text)
+
 class pingApp:
     def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, output_path, del_app_results, verbose = False):
         self.devDict = devDict
@@ -224,11 +230,11 @@ class pingApp:
         if self.verbose:
             print(f"Pinging from {self.app_source_ip} to {self.app_dest_ip}")
         if self.use_bash_script:
-            #cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(self.app_run_time)} > {self.output_path}{self.output_filename} 2>&1 &"
-            cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(100000)} > {self.output_path}{self.output_filename} 2>&1 &"
+            # cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(self.app_run_time)} >> {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(5000)} >> {self.output_path}{self.output_filename} 2>&1 &"
         else:
-            #cmdString = f"ping {self.app_dest_ip} -v -O -w {str(self.app_run_time)} > {self.output_path}{self.output_filename} 2>&1 &"
-            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(100000)} > {self.output_path}{self.output_filename} 2>&1 &"
+            # cmdString = f"ping {self.app_dest_ip} -v -O -w {str(self.app_run_time)} >> {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(5000)} >> {self.output_path}{self.output_filename} 2>&1 &"
         if self.verbose:
             print(f"{self.app_source_devName}: {cmdString}")
         self.app_source_object.popen(cmdString, shell=True) # Have to use popen to run in background; cmd hangs on subsequent commands
@@ -256,6 +262,19 @@ class pingApp:
 
     def does_app_sleep(self):
         return self.app_sleeps
+    
+    def get_output_file_and_path(self):
+        if self.output_path and self.output_filename:
+            return self.output_path+self.output_filename
+        return None
+    
+    def print_to_output_file(self, output_text):
+        output_path_and_filename = self.get_output_file_and_path()
+        if output_path_and_filename and self.app_source_object:
+            cmdString = f"echo {output_text} >> {output_path_and_filename}"
+            self.app_source_object.popen(cmdString, shell=True)
+            if self.verbose:
+                print(f"(spacenet_app_manager.print_to_output_file) Printed {output_text} to {output_path_and_filename}")
 
 class iperfApp:
     def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, output_path, del_app_results, verbose = False):
@@ -328,7 +347,27 @@ class iperfApp:
 
     def does_app_sleep(self):
         return self.app_sleeps
+    
+    def get_output_file_and_path(self):
+        # Returns two filenames and paths
+        server_output_file_and_path = None
+        client_output_file_and_path = None
+        if self.output_path: 
+            if self.server_output_filename:
+                server_output_file_and_path = self.output_path+self.server_output_filename
+            if self.client_output_filename:
+                client_output_file_and_path = self.output_path+self.client_output_filename
+        return server_output_file_and_path, client_output_file_and_path
 
+    def print_to_output_file(self, output_text):
+        server_output_file_and_path, client_output_file_and_path = self.get_output_file_and_path()
+        if server_output_file_and_path and client_output_file_and_path and self.app_source_object and self.app_dest_object:
+            dest_cmdString = f"echo {output_text} >> {server_output_file_and_path}"
+            source_cmdString = f"echo {output_text} >> {client_output_file_and_path}"
+            self.app_dest_object.cmd(dest_cmdString)
+            self.app_source_object.cmd(source_cmdString)
+            if self.verbose:
+                print(f"(spacenet_app_manager.print_to_output_file) Printed {output_text} to {server_output_file_and_path and {client_output_file_and_path}}")
 class CLIApp:
     def __init__(self, net, starting_interval, CLI_count, verbose = False):
         self.net = net
@@ -365,3 +404,9 @@ class CLIApp:
 
     def does_app_sleep(self):
         return self.app_sleeps
+    
+    def get_output_file_and_path(self):
+        return None # There is no output file
+    
+    def print_to_output_file(self, output_text):
+        return # No output file to print to

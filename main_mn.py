@@ -480,6 +480,7 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             gsList = []
     for gsName in gsList:
         satName = None
+        print(AllLinksDict[CurrEpochString])
         for linkName in AllLinksDict[CurrEpochString]: # use AllLinksDict to find the satellite connected to the ground station
             if gsName in linkName:
                 satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
@@ -489,13 +490,17 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             input("Press Enter to continue...")
             return IntervalRoutesDict
         devList = list(IntervalRoutesDict.keys())
-        try:
+        try: 
             devList.remove(satName) # Remove the satellite from the list of devices
         except ValueError:
             pass # Skip if the satellite is not in the list
         _, gsNetworkIP, _ = devDict[gsName] # Get GS Network IP
         _, satNetworkIP, satIntfList = devDict[satName] # Get Satellite Network IP
+        print(devList)
+        print(gsName)
         for devName in devList:
+            print(devName,satNetworkIP)
+            print(IntervalRoutesDict[devName])
             nextHopIP, nextHopIntfName = IntervalRoutesDict[devName][satNetworkIP]
             IntervalRoutesDict[devName][gsNetworkIP] = (nextHopIP, nextHopIntfName) # Add route to GS
         for satIntfTuple in satIntfList:
@@ -535,6 +540,7 @@ def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffi
         else:
             RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, route)
         curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
+        print(curEpochDateTime)
     return RoutingDict
 
 # ================== Node Routing Functions ==================
@@ -1049,7 +1055,7 @@ def main():
         # Get list of all interface names for this device
         devIntfNameList = [devIntfTuple[0] for devIntfTuple in devIntfList] # devIntfTupe format: (intfName, intfIPandCDR, distHostName, distIntfIP)
         currLinksUp = [linkName for linkName in devIntfNameList if linkName in AllLinksDict[CurrEpochString].keys()]
-        if len(currLinksUp) != 1: # if the device has more than one active interface
+        if len(currLinksUp) > 4: # if the device has more than four active interfaces
             print(f"\033[33m\tWARNING: Device {devName} is not in routing table but has more than one active interface this time interval. Skipping default route setup.\033[0m")
             continue
         defaultGatewayNodeList.append(devName)
@@ -1086,6 +1092,7 @@ def main():
 
     # Start of Loop
     while (EpochIntervalCounter < EpochIntervalCount):
+        appManager.print_to_output_file("Interval Change")
         # Update epoch time to next interval
         EpochPreviousDateTime = EpochCurrentDateTime
         PrevEpochString = EpochPreviousDateTime.strftime("%Y_%m_%d_%H_%M_%S")
@@ -1252,7 +1259,7 @@ def main():
             # Get list of all interface names for this device
             devIntfNameList = [devIntfTuple[0] for devIntfTuple in devIntfList] # devIntfTupe format: (intfName, intfIPandCDR, distHostName, distIntfIP)
             currLinksUp = [linkName for linkName in devIntfNameList if linkName in AllLinksDict[CurrEpochString].keys()]
-            if len(currLinksUp) != 1: # if the device has more than one active interface
+            if len(currLinksUp) > 4: # if the device has more than four active interfaces
                 print(f"\033[33m\tWARNING: Device {devName} is not in routing table but has more than one active interface this time interval. Skipping default route setup.\033[0m")
                 continue
             defaultGatewayNodeList.append(devName)

@@ -1,3 +1,4 @@
 script_output/*.*
 lib/__pycache__/
-
+resource_monitor/__pycache__/
+config_files/sat_config_files/starlink*
