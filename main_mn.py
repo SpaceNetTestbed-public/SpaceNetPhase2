@@ -398,12 +398,15 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
     global devDict
     IntervalRoutesDict = {}
 
+    if route:
+        print(f"Minimal Node List: {route}")
+
     with open(RoutingFileName, 'r') as file:
         for line in file:
             line = line.strip() # Remove leading/trailing whitespace and newlines
             line = line.replace(' ', '') # Remove any remaining spaces
             commaCount = line.count(',')
-            if commaCount == 0: # Ignore header line
+            if commaCount == 0: # Ignore blank line
                 pass
             else:
                 #if global_verbose:
@@ -478,9 +481,10 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
             gsList = [str(i) for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt)]
         else:
             gsList = []
+    print(f"All Links Dictionary for {CurrEpochString}: {AllLinksDict[CurrEpochString]}")
+    print(f"Interval Routes Dictionary: {IntervalRoutesDict}")
     for gsName in gsList:
         satName = None
-        print(AllLinksDict[CurrEpochString])
         for linkName in AllLinksDict[CurrEpochString]: # use AllLinksDict to find the satellite connected to the ground station
             if gsName in linkName:
                 satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
@@ -500,7 +504,7 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
         print(gsName)
         for devName in devList:
             print(devName,satNetworkIP)
-            print(IntervalRoutesDict[devName])
+            print(f"Interval Routes Dictionary for {devName}: {IntervalRoutesDict[devName]}")
             nextHopIP, nextHopIntfName = IntervalRoutesDict[devName][satNetworkIP]
             IntervalRoutesDict[devName][gsNetworkIP] = (nextHopIP, nextHopIntfName) # Add route to GS
         for satIntfTuple in satIntfList:
@@ -745,7 +749,7 @@ def main():
             appOptionsDict["CLIIntervalCount"] = sim_config["CLIIntervalCount"]
         else:
             appOptionsDict = None
-        appManager = spacenet_app_manager.AppManager(totalSatCnt = TotalSatCnt, totalGSCnt = TotalGSCnt, devDict = devDict, appRunTime = None, outputPath = output_path, delAppResults = del_app_results, net = net, verbose = global_verbose)
+        appManager = spacenet_app_manager.AppManager(totalSatCnt = TotalSatCnt, totalGSCnt = TotalGSCnt, devDict = devDict, appRunTime = None, intervalRunTime= EpochIntervalDuration, outputPath = output_path, delAppResults = del_app_results, net = net, verbose = global_verbose)
         appManager.select_app(appOptionsDict)
     else: # TO DO: Add support for other app managers
         print("No App Manager selected. Exiting...")
@@ -1086,13 +1090,13 @@ def main():
     EpochIntervalCounter += 1
     if global_verbose:
         print(f"[{current_second}] Simulating {len(devDict)} nodes")
-    if appManager.app_sleeps(): # Interval duration skipped for CLI app
+    if appManager.app_sleeps(): # Does the app put the control script to sleep for interval duration? (Interval duration skipped for CLI app)
         print(f"[{current_second}] ~~~Sleeping for {EpochIntervalDuration} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
         time.sleep(EpochIntervalDuration)
 
     # Start of Loop
     while (EpochIntervalCounter < EpochIntervalCount):
-        appManager.print_to_output_file("Interval Change")
+        appManager.print_to_output_file(f"[{current_second}] Change to Interval Number {EpochIntervalCounter}")
         # Update epoch time to next interval
         EpochPreviousDateTime = EpochCurrentDateTime
         PrevEpochString = EpochPreviousDateTime.strftime("%Y_%m_%d_%H_%M_%S")

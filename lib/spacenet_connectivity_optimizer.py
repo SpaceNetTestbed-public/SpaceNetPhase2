@@ -163,7 +163,7 @@ def parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTupl
     #return sourceSatList, destinationSatList
 
 #def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, sourceSatList, destinationSatList):
-def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointConnectingNodeByIntervalDict):
+def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointConnectingNodeByIntervalDict, endpointTuple):
     if global_verbose:
         #print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, source satellites: {sourceSatList}, destination satellites: {destinationSatList}")
         print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, endpoint connecting nodes by interval: {endpointConnectingNodeByIntervalDict}")
@@ -189,25 +189,40 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
         sourceConnectingNodeList, destinationConnectingNodeList = endpointConnectingNodeByIntervalDict[epochIntervalNum]
         sourceConnectingNode = sourceConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and source node)
         destinationConnectingNode = destinationConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and destination node)
+        sourceNode, destinationNode = endpointTuple
         routeFound = False
         with open(routingFile) as f:
-            for line in f:
+            for line in f: # First check whether an entry in the file is a direct route
                 line = line.strip() # Remove leading/trailing whitespace
-                line = line.replace (' ', '') # Remove spaces (if any)
+                line = line.replace(' ','') # Remove spaces (if any)
                 commaCount = line.count(',')
-                if commaCount == 0: # Ignore header line
-                    continue
+                if commaCount == 0: #Ignore header line
+                    continue # move to next line
                 lineElements = line.split(',')
                 routeSourcenode = lineElements[0]
                 routeDestnode = lineElements[-1]
-                if (routeSourcenode == sourceConnectingNode and routeDestnode == destinationConnectingNode) or (routeSourcenode == destinationConnectingNode and routeDestnode == sourceConnectingNode): # Found the route between the source and destination nodes (or vice versa)
+                if (routeSourcenode == sourceNode and routeDestnode == destinationNode) or (routeDestnode == sourceNode and routeSourcenode == destinationNode): # Route between source and destination nodes explicitly included in routing file
                     routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
-                    if len(sourceConnectingNodeList) > 1:
-                        routeByIntervalDict[epochIntervalNum].extend(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
-                    if len(destinationConnectingNodeList) > 1:
-                        routeByIntervalDict[epochIntervalNum].extend(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
                     routeFound = True
                     break
+            if not routeFound: # If direct route between source/dest nodes not in routing file, look for route between connecting nodes (ground stations not included in routing file)
+                for line in f:
+                    line = line.strip() # Remove leading/trailing whitespace
+                    line = line.replace(' ', '') # Remove spaces (if any)
+                    commaCount = line.count(',')
+                    if commaCount == 0: # Ignore header line
+                        continue
+                    lineElements = line.split(',')
+                    routeSourcenode = lineElements[0]
+                    routeDestnode = lineElements[-1]
+                    if (routeSourcenode == sourceConnectingNode and routeDestnode == destinationConnectingNode) or (routeSourcenode == destinationConnectingNode and routeDestnode == sourceConnectingNode): # Found the route between the source and destination nodes (or vice versa)
+                        routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
+                        if len(sourceConnectingNodeList) > 1:
+                            routeByIntervalDict[epochIntervalNum].extend(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
+                        if len(destinationConnectingNodeList) > 1:
+                            routeByIntervalDict[epochIntervalNum].extend(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
+                        routeFound = True
+                        break
         if not routeFound:
             print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find route between {sourceConnectingNode} and {destinationConnectingNode} in routing file {routingFile}{end_color_string}")
             return None
@@ -233,7 +248,7 @@ def find_minimal_node_list(connectivityFileTuple, routingFileTuple, epochTuple, 
     #if sourceSatList is None or destinationSatList is None:
     #    return None
     #minimalNodeList = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, sourceSatList, destinationSatList)
-    routeByIntervalDict = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointConnectingNodeByIntervalDict)
+    routeByIntervalDict = parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endpointConnectingNodeByIntervalDict, endpointTuple)
     if routeByIntervalDict is None:
         return None, None
     sourceNode, destinationNode = endpointTuple

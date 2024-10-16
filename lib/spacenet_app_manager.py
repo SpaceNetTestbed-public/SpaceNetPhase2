@@ -4,7 +4,7 @@ from mininet.cli import CLI
 from time import sleep # for sleeping 
 
 class AppManager:
-    def __init__(self, totalSatCnt, totalGSCnt, devDict, appRunTime = None, outputPath = "./", delAppResults = False, net = None, verbose = False): # receive 'global' application parameters
+    def __init__(self, totalSatCnt, totalGSCnt, devDict, appRunTime = None, intervalRunTime = None, outputPath = "./", delAppResults = False, net = None, verbose = False): # receive 'global' application parameters
         self.app_list = ["Ping", "Iperf", "CLI"]
         self.app_source_devName = None
         self.app_dest_devName = None
@@ -14,7 +14,8 @@ class AppManager:
         self.del_app_results = delAppResults
         self.total_sat_count = totalSatCnt
         self.total_gs_count = totalGSCnt
-        self.app_run_time = appRunTime
+        self.appRunTime = appRunTime
+        self.intervalRunTime = intervalRunTime
         self.output_path = outputPath
         self.device_dictionary = devDict
         self.net = net
@@ -67,9 +68,13 @@ class AppManager:
                 print(f"(spacenet_app_manager:AppManager:select_app) Running {self.app_selection} from nodes {self.app_source_devName} to {self.app_dest_devName}.")
                 print(f"(spacenet_app_manager:AppManager:select_app) Output path: {self.output_path}; Delete app results: {self.del_app_results}; Verbose: {self.verbose}")
                 if self.app_selection == "Ping":
-                    self.app_object = pingApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.app_run_time, self.output_path, self.del_app_results, self.verbose)
+                    # Check if Ping should pause during interval changes
+                    if ("PauseAtIntervalChange" in appOptionsDict) and (appOptionsDict["PauseAtIntervalChange"] == True):
+                        self.app_object = pingApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.intervalRunTime, self.output_path, self.del_app_results, pause_at_interval_change=True, verbose=self.verbose)
+                    else:
+                        self.app_object = pingApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.appRunTime, self.output_path, self.del_app_results, self.verbose)
                 elif self.app_selection == "Iperf":
-                    self.app_object = iperfApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.app_run_time, self.output_path, self.del_app_results, self.verbose)
+                    self.app_object = iperfApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.appRunTime, self.output_path, self.del_app_results, self.verbose)
             elif self.app_selection == "CLI":
                 self.CLI_start_interval = appOptionsDict["CLIStartInterval"]
                 self.CLI_interval_count = appOptionsDict["CLIIntervalCount"]
@@ -190,13 +195,19 @@ class AppManager:
         self.app_object.print_to_output_file(output_text)
 
 class pingApp:
-    def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, output_path, del_app_results, verbose = False):
+    def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, output_path, del_app_results, pause_at_interval_change = False, verbose = False):
         self.devDict = devDict
         self.app_source_devName = app_source_devName
         self.app_dest_devName = app_dest_devName
-        self.app_run_time = ApplicationRunTime
+        self.app_run_time = None
+        if pause_at_interval_change:
+            if ApplicationRunTime is not None:
+                self.app_run_time = ApplicationRunTime - 1 # This is actually the interval time from the constellation configuration, so subtract 1 second
+        else:
+            self.app_run_time = ApplicationRunTime
         self.output_path = output_path
         self.del_app_results = del_app_results
+        self.pause_at_interval_change = pause_at_interval_change
         self.verbose = verbose
         
         self.app_source_object = None
@@ -218,7 +229,8 @@ class pingApp:
     def start(self, current_interval = None):
         if self.running:
             return
-        self.running = True
+        if not self.pause_at_interval_change:
+            self.running = True # If running for duration of simulation, prevent it from being re-run at each time interval (probably a better way to do this)
         # Now that the device dictionary should be populated, get the source and destination devices and IPs
         self.app_source_object, self.app_source_ip, _ = self.devDict[self.app_source_devName]
         self.app_source_ip = self.app_source_ip.split('/')[0]
@@ -231,10 +243,10 @@ class pingApp:
             print(f"Pinging from {self.app_source_ip} to {self.app_dest_ip}")
         if self.use_bash_script:
             # cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(self.app_run_time)} >> {self.output_path}{self.output_filename} 2>&1 &"
-            cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(5000)} >> {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(12)} >> {self.output_path}{self.output_filename} 2>&1 &"
         else:
             # cmdString = f"ping {self.app_dest_ip} -v -O -w {str(self.app_run_time)} >> {self.output_path}{self.output_filename} 2>&1 &"
-            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(5000)} >> {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(12)} >> {self.output_path}{self.output_filename} 2>&1 &"
         if self.verbose:
             print(f"{self.app_source_devName}: {cmdString}")
         self.app_source_object.popen(cmdString, shell=True) # Have to use popen to run in background; cmd hangs on subsequent commands
@@ -258,7 +270,8 @@ class pingApp:
         pass
 
     def update_app_run_time(self, appRunTime):
-        self.app_run_time = appRunTime
+        if not self.pause_at_interval_change:
+            self.app_run_time = appRunTime
 
     def does_app_sleep(self):
         return self.app_sleeps

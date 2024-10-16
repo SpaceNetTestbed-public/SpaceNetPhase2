@@ -4,14 +4,15 @@ ConstellationName: starlink720_12_10_Inc50 # Name must match constellation confi
 OutputFilePath: script_output/
 DeleteAppResults: False
 Verbose: True
-Optimize: False
+Optimize: True
 MonitorResource: False
 # ~~~ App configurations ~~~
 AppName: Ping # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
 SourceDeviceName: 720 #1609 # 101, 501, 1001, 2001
-DestDeviceName: 722 #1585 # 100, 500, 1000, 2000
+DestDeviceName: 723 #1585 # 100, 500, 1000, 2000
+PauseAtIntervalChange: True # Will pause app while network links and routes are updated, then resume
 # For CLI
 CLIStartInterval: 0
 CLIIntervalCount: 3
