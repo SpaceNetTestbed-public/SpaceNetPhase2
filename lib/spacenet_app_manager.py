@@ -225,6 +225,11 @@ class pingApp:
         import os
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
+        # Delete the output file if it already exists
+        import os
+        if os.path.exists(f"{self.output_path}{self.output_filename}"):
+            print(f"(spacenet_app_manager.startPing) Deleting existing output file {self.output_path}{self.output_filename}")
+            os.remove(f"{self.output_path}{self.output_filename}")
 
     def start(self, current_interval = None):
         if self.running:
@@ -236,6 +241,8 @@ class pingApp:
         self.app_source_ip = self.app_source_ip.split('/')[0]
         self.app_dest_object, self.app_dest_ip, _ = self.devDict[self.app_dest_devName]
         self.app_dest_ip = self.app_dest_ip.split('/')[0]
+
+        
 
         if self.verbose:
             print("*** Running Ping\n")
