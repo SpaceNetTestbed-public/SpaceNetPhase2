@@ -747,9 +747,20 @@ def main():
             appOptionsDict["DestDeviceName"] = sim_config["DestDeviceName"]
             appOptionsDict["CLIStartInterval"] = sim_config["CLIStartInterval"]
             appOptionsDict["CLIIntervalCount"] = sim_config["CLIIntervalCount"]
+            if "PauseAtIntervalChange" in sim_config:
+                appOptionsDict["PauseAtIntervalChange"] = sim_config["PauseAtIntervalChange"]
         else:
             appOptionsDict = None
-        appManager = spacenet_app_manager.AppManager(totalSatCnt = TotalSatCnt, totalGSCnt = TotalGSCnt, devDict = devDict, appRunTime = None, intervalRunTime= EpochIntervalDuration, outputPath = output_path, delAppResults = del_app_results, net = net, verbose = global_verbose)
+        appRunTime = EpochIntervalCount * EpochIntervalDuration # Default application run time
+        appManager = spacenet_app_manager.AppManager(totalSatCnt = TotalSatCnt, 
+                                                     totalGSCnt = TotalGSCnt, 
+                                                     devDict = devDict, 
+                                                     appRunTime = appRunTime, 
+                                                     intervalRunTime= EpochIntervalDuration, 
+                                                     outputPath = output_path, 
+                                                     delAppResults = del_app_results, 
+                                                     net = net, 
+                                                     verbose = global_verbose)
         appManager.select_app(appOptionsDict)
     else: # TO DO: Add support for other app managers
         print("No App Manager selected. Exiting...")
@@ -1081,9 +1092,9 @@ def main():
     # =================================================================
     if use_app_manager:
         # Application start
-        ApplicationRunTime = (EpochIntervalCount * EpochIntervalDuration) - 5 # 5 second buffer
-        print(f"[{current_second}] Starting application and running for {ApplicationRunTime} seconds")
-        appManager.update_app_run_time(ApplicationRunTime)
+        #ApplicationRunTime = (EpochIntervalCount * EpochIntervalDuration)# - 5 # 5 second buffer
+        print(f"[{current_second}] Starting application and running for {appManager.get_app_run_time()} seconds")
+        #appManager.update_app_run_time(ApplicationRunTime)
         appManager.start_app(EpochIntervalCounter)
 
     # =================================================================

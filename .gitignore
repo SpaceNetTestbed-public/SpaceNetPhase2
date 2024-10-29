@@ -1,4 +1,6 @@
 script_output/*.*
+script_output/misc_results/
 lib/__pycache__/
 resource_monitor/__pycache__/
 config_files/sat_config_files/starlink*
+analysis/analysis_output/*

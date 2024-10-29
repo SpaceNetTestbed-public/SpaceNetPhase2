@@ -1,0 +1,6 @@
+mean_and_stddev:
+    data_file:  ../script_output/ping_london1.txt
+    test_type:  ping
+    input_dir:  
+    output_dir: analysis_output/
+    threads:    2
