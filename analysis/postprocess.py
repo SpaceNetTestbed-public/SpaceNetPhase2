@@ -218,6 +218,8 @@ def compute_mean_and_stddev(
 # ----------------------------------------------------- #
 def plot_network_utility_results(
                                 path_to_text_file,
+                                main_config,
+                                sat_config,
                                 input_dir,
                                 output_dir,
                                 test_type,
@@ -244,8 +246,8 @@ def plot_network_utility_results(
                              test_type=test_type, num_workers=num_workers)
 
     # Simulation configuration file
-    sat_config_file = yaml.safe_load(open('../config_files/sat_config_files/starlink_12_10_Inc50.yaml', 'r'))
-    main_config_file = yaml.safe_load(open('../config_files/main_mn_config.yaml', 'r'))
+    sat_config_file = yaml.safe_load(open(sat_config, 'r'))
+    main_config_file = yaml.safe_load(open(main_config, 'r'))
 
     # Determine the timestep of simulation
     ts = np.float64(sat_config_file['EpochIntervalDuration'])
@@ -314,6 +316,8 @@ def plot_network_utility_results(
 # FUNCTION 6 : SAVE RESULTS TO A CSV FILE    	        #
 # ----------------------------------------------------- #
 def write_to_csv(path_to_text_file,
+                 main_config,
+                 sat_config,
                  input_dir,
                  output_dir,
                  test_type,
@@ -336,8 +340,8 @@ def write_to_csv(path_to_text_file,
     """
 
     # Simulation configuration file
-    sat_config_file = yaml.safe_load(open('../config_files/sat_config_files/starlink_12_10_Inc50.yaml', 'r'))
-    main_config_file = yaml.safe_load(open('../config_files/main_mn_config.yaml', 'r'))
+    sat_config_file = yaml.safe_load(open(sat_config, 'r'))
+    main_config_file = yaml.safe_load(open(main_config, 'r'))
 
     # Read file and extract contents from dataset
     dataset = read_text_file(path_to_text_file=path_to_text_file, input_dir=input_dir,
@@ -374,30 +378,29 @@ if __name__ == "__main__":
     if os.path.exists('../analysis/postprocess_config.yml'):
         with open('../analysis/postprocess_config.yml', 'r') as config_file:
             config_data = yaml.safe_load(config_file)
-   
-    # Mean and standard deviation
-    if config_data['mean_and_stddev']:
-        
-        # Set main dictionary key
-        mstd_key = config_data['mean_and_stddev']
 
-        # Compute mean and std. dev.
-        result = compute_mean_and_stddev(path_to_text_file=mstd_key['data_file'], input_dir=mstd_key['input_dir'], 
-                                         test_type=mstd_key['test_type'], num_workers=int(mstd_key['threads']))
+    # Compute mean and std. dev.
+    result = compute_mean_and_stddev(path_to_text_file=config_data['data_file'], input_dir=config_data['input_dir'], 
+                                         test_type=config_data['test_type'], num_workers=int(config_data['threads']))
         
-        # Plot the results
-        plot = plot_network_utility_results(path_to_text_file=mstd_key['data_file'], input_dir=mstd_key['input_dir'], 
-                                            output_dir=mstd_key['output_dir'], test_type=mstd_key['test_type'], 
-                                            num_workers=int(mstd_key['threads']))
+    # Plot the results
+    if config_data['plot']:
+        plot = plot_network_utility_results(path_to_text_file=config_data['data_file'], main_config=config_data['main_config'],
+                                            sat_config=config_data['sat_config'], input_dir=config_data['input_dir'], 
+                                            output_dir=config_data['output_dir'], test_type=config_data['test_type'], 
+                                            num_workers=int(config_data['threads']))
         
-        # Save the results to a CSV file
-        write_to_csv(path_to_text_file=mstd_key['data_file'], input_dir=mstd_key['input_dir'], output_dir=mstd_key['output_dir'], 
-                     test_type=mstd_key['test_type'], num_workers=int(mstd_key['threads']))
+    # Save the results to a CSV file
+    if config_data['csv']:
+        write_to_csv(path_to_text_file=config_data['data_file'], main_config=config_data['main_config'],
+                     sat_config=config_data['sat_config'], input_dir=config_data['input_dir'], 
+                     output_dir=config_data['output_dir'], test_type=config_data['test_type'], 
+                     num_workers=int(config_data['threads']))
         
-        # Print results
-        #os.system('clear')
-        print(("\nData: " + mstd_key['data_file']))
-        if mstd_key['test_type'] == 'iperf':
-            print(("\nMean:\t\t\t" + str(result[0][1]) + " Mbps\nStd. dev (samp.):\t" + str(result[1][1]) + " Mbps\nStd. dev (pop.):\t" + str(result[2][1]) + " Mbps\n\n"))
-        elif mstd_key['test_type'] == 'ping':
-            print(("\nMean:\t\t\t" + str(result[0]) + " ms\nStd. dev (samp.):\t" + str(result[1]) + " ms\nStd. dev (pop.):\t" + str(result[2]) + " ms\n\n"))
+    # Print results
+    #os.system('clear')
+    print(("\nData: " + config_data['data_file']))
+    if config_data['test_type'] == 'iperf':
+        print(("\nMean:\t\t\t" + str(result[0][1]) + " Mbps\nStd. dev (samp.):\t" + str(result[1][1]) + " Mbps\nStd. dev (pop.):\t" + str(result[2][1]) + " Mbps\n\n"))
+    elif config_data['test_type'] == 'ping':
+        print(("\nMean:\t\t\t" + str(result[0]) + " ms\nStd. dev (samp.):\t" + str(result[1]) + " ms\nStd. dev (pop.):\t" + str(result[2]) + " ms\n\n"))
