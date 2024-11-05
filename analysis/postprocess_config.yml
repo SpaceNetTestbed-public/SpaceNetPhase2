@@ -1,6 +1,6 @@
-data_file:   ../script_output/ping_alt500_inc75_london_7pm.txt
+data_file:   ../script_output/ping_alt500_inc75_9am_rio.txt
 main_config: ../config_files/main_mn_config.yaml
-sat_config:  ../config_files/sat_config_files/starlink_alt500_inc75_7pm_london.yaml
+sat_config:  ../config_files/sat_config_files/starlink_alt500_inc75_9am_rio.yaml
 test_type:   ping
 input_dir:   
 output_dir:  analysis_output/

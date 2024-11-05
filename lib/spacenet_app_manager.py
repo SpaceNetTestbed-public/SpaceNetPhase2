@@ -225,7 +225,7 @@ class pingApp:
         self.output_filename = "ping_results.txt"
         self.app_sleeps = True
         self.running = False
-        self.use_bash_script = True
+        self.use_bash_script = False
         self.bash_script = "ping_for_duration.sh"
 
         # Initialization tasks:
@@ -264,7 +264,7 @@ class pingApp:
             cmdString = f"bash {self.bash_script} {self.app_dest_ip} {str(appRunTime)} >> {self.output_path}{self.output_filename} 2>&1 &"
         else:
             #cmdString = f"ping {self.app_dest_ip} -v -O -w {str(12)} >> {self.output_path}{self.output_filename} 2>&1 &"
-            cmdString = f"ping {self.app_dest_ip} -v -O -w {str(appRunTime)} >> {self.output_path}{self.output_filename} 2>&1 &"
+            cmdString = f"ping {self.app_dest_ip} -v -O -w 50 -c {str(appRunTime)} >> {self.output_path}{self.output_filename} 2>&1 &"
         if self.verbose:
             print(f"{self.app_source_devName}: {cmdString}")
         self.app_source_object.popen(cmdString, shell=True) # Have to use popen to run in background; cmd hangs on subsequent commands
