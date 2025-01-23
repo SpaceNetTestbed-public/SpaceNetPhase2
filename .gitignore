@@ -1,3 +1,7 @@
 script_output/*.*
 __pycache__/*
 lib/__pycache__/*
+analysis/analysis_output/*
+config_files/sat_config_files/*
+resource_monitor/__pycache__/*
+script_output/*
