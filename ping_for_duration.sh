@@ -29,7 +29,6 @@ fi
 start_time=$(date +%s)
 
 # Loop until the elapsed time exceeds the specified duration
-#while [ $(($(date +%s) - $start_time)) -lt $duration ]; do
 while true; do
     # Check if elapsed time exceeds the specified duration
     elapsed_time=$(($(date +%s) - $start_time))
@@ -37,10 +36,10 @@ while true; do
         break
     fi
     ping -v -O -w $(($duration - $elapsed_time)) $target
-    #ping -c 1 $target
     if [ $? -eq 0 ]; then
         echo "Ping successful"
     else
         echo "Ping failed to $target at $(date). Retrying..."
+        sleep 1
     fi
 done

@@ -1,0 +1,9 @@
+data_file:   ../script_output/Scitech/custom_ping_1230pm_Orlando_Rio.txt
+main_config: ../config_files/main_mn_config.yaml
+sat_config:  ../config_files/sat_config_files/starlink1584_10_12.yaml
+test_type:   ping
+input_dir:   
+output_dir:  analysis_output/
+threads:     2
+csv:         true
+plot:        false
