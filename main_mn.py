@@ -1102,8 +1102,9 @@ def main():
     if global_verbose:
         print(f"[{current_second}] Simulating {len(devDict)} nodes")
     if appManager.app_sleeps(): # Does the app put the control script to sleep for interval duration? (Interval duration skipped for CLI app)
-        print(f"[{current_second}] ~~~Sleeping for {2*EpochIntervalDuration} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
-        time.sleep(2*EpochIntervalDuration)
+        sleepTime = EpochIntervalDuration+10
+        print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+        time.sleep(sleepTime) # Wait interval duration before starting main program loop
 
     # Start of Loop
     while (EpochIntervalCounter < EpochIntervalCount):
@@ -1353,8 +1354,9 @@ def main():
         # End of loop
         EpochIntervalCounter += 1 
         if use_app_manager and appManager.app_sleeps(): # Interval duration skipped for CLI app
-            print(f"[{current_second}] ~~~Sleeping for {2*EpochIntervalDuration} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
-            time.sleep(2*EpochIntervalDuration)
+            sleepTime = EpochIntervalDuration+10
+            print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+            time.sleep(sleepTime)
     # =================================================================
     # Application stop
     if use_app_manager:
