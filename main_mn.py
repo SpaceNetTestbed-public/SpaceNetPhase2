@@ -32,6 +32,8 @@ from resource_monitor.top_logger import TOP_LOGGER
 
 import os # For checking admin priv
 
+pprint = None # Declaring module name in global space so it can be imported in functions
+
 # ~~~~~~~~~~~~~~~~~~ FEATURE ENABLE/DISABLE ~~~~~~~~~~~~~~~~~~
 use_node_python_script = False
 use_python_virtual_env = False
@@ -53,9 +55,14 @@ routing_files_imply_reverse_routes = True # True indicates that reverse routes a
 
 # ================== Program Flow Variables ==================
 main_loop_running = True
+simTimeMode = "discrete" # "discrete" or "continuous"; can be specified in config file, 'discrete' is default
+contUpdateSkipMargin = 2 # tolerance in seconds to attempt scenario update in continuous mode
 
 # ================== Thread Variables ==================
 thread_list = []
+stop_event = None # Event to signal threads to stop
+update_in_progress = False # Flag to indicate an update is in progress
+update_lock = None # Lock to protect 'update_in_progress' flag
 
 # =============== Epoch and Interval Information ===============
 starting_interval = 0
@@ -64,6 +71,13 @@ current_second = 0
 
 EpochIntervalCounter = 0
 EpochIntervalDuration = 0
+EpochIntervalCount = None
+
+# =============== Variables Specific to Network Changes between Intervals ===============
+appManager = None
+EpochCurrentDateTime = None
+fullRoutingDict = {}
+net = None
 
 # =============== Tracking Dictionaries ===============
 devDict = {} # Will contain: management IP, list of interfaces containing tuples with: interface name, interface IP, distant device name
@@ -630,9 +644,10 @@ def abort(net):
     exit()
 
 def end_main_loop(signum, frame):
-    global main_loop_running
+    global main_loop_running, stop_event
     print(f"\nReceived signal to end main loop: {signum}", flush=True)
     main_loop_running = False
+    stop_event.set() if stop_event is not None else None
 
 def increment_timer():
     global current_second
@@ -665,6 +680,337 @@ def wait_on_threads():
             print(f"(wait_on_threads) Thread {thread.name} finished.")
     print("(wait_on_threads) All threads finished.")
 
+# ================== Continuous Time Mode Methods ==================
+def attempt_scenario_update(): # Tries to perform scenario update when called by timing thread
+    global update_in_progress
+
+    # Acquire lock to check/update shared flag
+    with update_lock:
+        if update_in_progress:
+            print(f"[{current_second}] (attempt_scenario_update) >>>WARNING<<< Update already in progress. Skipping interval update.")
+            return
+        update_in_progress = True
+
+    # Update scenario
+    update_interval()
+
+    # Release lock
+    with update_lock:
+        update_in_progress = False
+
+def interval_update_timing_thread(epochIntervalDuration, epochIntervalCount): # Attempts to perform updates at specific wall-clock times if using continuous time mode
+    start_time = time.monotonic()
+
+    # Precompute all scheduled update times
+    update_times = [(i+1) * epochIntervalDuration for i in range(epochIntervalCount-1)] # Update at the end of each interval, so skip the first interval
+    print(f"[{current_second}] (interval_update_timing_thread) Performing interval updates at times: {update_times} seconds.")
+
+    i = 0 # index for update_times
+    while i < len(update_times) and not stop_event.is_set():
+        elapsed = time.monotonic() - start_time
+        print(f"[{current_second}] (interval_update_timing_thread) Checking for update {i+1} (at {update_times[i]:.2f}s) at elapsed time {elapsed:.2f} seconds.")
+        
+
+        # Skip any updates we are late for
+        while i < len(update_times) and (elapsed >= update_times[i] + contUpdateSkipMargin):
+            missed_by = elapsed - update_times[i]
+            print(f"[{current_second}] (interval_update_timing_thread) >>>WARNING<<< Skipping update {i+1} (missed by {missed_by:.2f} seconds).")
+            i += 1
+        
+        # If all update times have passed or are told to stop, break out
+        if i >= len(update_times) or stop_event.is_set():
+            print(f"[{current_second}] (interval_update_timing_thread) Finished all updates.")
+            break
+
+        # Calculate time to sleep until next update
+        wait_time = update_times[i] - elapsed
+        if wait_time > 0:
+            print(f"[{current_second}] (interval_update_timing_thread) Sleeping for {wait_time:.2f} seconds until next update.")
+            time.sleep(wait_time)
+
+        if stop_event.is_set(): # Check one last time if stop event is set before attempting update
+            print(f"[{current_second}] (interval_update_timing_thread) Stop event set. Exiting.")
+            break
+
+        # Attempt update (may be skipped if another update is in progress)
+        print(f"[{current_second}] (interval_update_timing_thread) Attempting update {i+1} (at {update_times[i]:.2f}s) at {time.monotonic() - start_time:.2f} seconds.")
+        attempt_scenario_update()
+        i += 1
+
+# ================== Logic for all updates that occur during interval changes ==================
+# 
+def update_interval():
+    global EpochIntervalDuration, EpochIntervalCounter, EpochIntervalCount, EpochCurrentDateTime, continuousTimeTotal
+    global current_second, global_verbose, simTimeMode
+    global appManager, net
+    global nodeIndexDict, devDict, AllLinksDict, fullRoutingDict
+    print(f"[{current_second}] (update_interval)  Updating to Interval Number {EpochIntervalCounter}")
+    appManager.print_to_output_file(f"[{current_second}] Change to Interval Number {EpochIntervalCounter}")
+    # Update epoch time to next interval
+    EpochPreviousDateTime = EpochCurrentDateTime
+    PrevEpochString = EpochPreviousDateTime.strftime("%Y_%m_%d_%H_%M_%S")
+    EpochCurrentDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
+    CurrEpochString = EpochCurrentDateTime.strftime("%Y_%m_%d_%H_%M_%S")
+    info("[" + str(current_second) + "] (update_interval) ~Setting conditions at epoch " + CurrEpochString + "~\n")
+
+    info("*** Updating link states\n")
+    try:
+        prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
+        currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
+    except KeyError:
+        print(f"[{current_second}] Error: Could not find link information for epoch {PrevEpochString} or {CurrEpochString} (Epochs in AllLinksDict: {list(AllLinksDict.keys())})")
+        abort(net)
+    linksToDisableList = set(prevLinkNameList) - set(currLinkNameList)
+    linksToEnableList = set(currLinkNameList) - set(prevLinkNameList)
+    linksToContinueList = set(prevLinkNameList) & set(currLinkNameList)
+
+    info("*** Disabling links\n")
+    for linkName in linksToDisableList:
+        DevAhostName, DevBhostName = linkName.split("_")
+        DevAObject = net.get(DevAhostName)
+        DevBObject = net.get(DevBhostName)
+        cmdString = 'ip link set ' + linkName + ' down'
+        if global_verbose:
+            print(f"[{current_second}] Executing command on hosts ", DevAhostName, ", ", DevBhostName, ": ", cmdString)
+        DevAObject.cmd(cmdString)
+        DevBObject.cmd(cmdString)
+        if global_verbose:
+            print("  - Link ", linkName, " disabled")
+
+    info("*** Enabling links\n")
+    DevAObject, DevBObject = None, None # Initialize variables so they persist outside of loops
+    linkList = None
+    for linkName in linksToEnableList:
+        DevAhostName, DevBhostName = linkName.split("_")
+        DevAObject = net.get(DevAhostName)
+        DevBObject = net.get(DevBhostName)
+        cmdString = 'ip link set ' + linkName + ' up'
+        if global_verbose:
+            print(f"[{current_second}] Executing command on hosts ", DevAhostName, ", ", DevBhostName, ": ", cmdString)
+        DevAObject.cmd(cmdString)
+        DevBObject.cmd(cmdString)
+        # Set link delay and bandwidth
+        linkDelay, linkBandwidth = AllLinksDict[CurrEpochString][linkName]
+        linkList = net.linksBetween(DevAObject, DevBObject)
+        linkList[0].intf1.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth)) # bandwidth is in Mbps (I think)
+        linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth))
+        if global_verbose:
+            print("  - Link ", linkName, " enabled with delay ", linkDelay, " and bandwidth ", linkBandwidth)
+
+    info("*** Verifying continuing links\n")
+    for linkName in linksToContinueList:
+        if AllLinksDict[PrevEpochString][linkName] != AllLinksDict[CurrEpochString][linkName]:
+            # Set link delay and bandwidth
+            linkDelay, linkBandwidth = AllLinksDict[CurrEpochString][linkName]
+            DevAhostName, DevBhostName = linkName.split("_")
+            DevAObject = net.get(DevAhostName)
+            DevBObject = net.get(DevBhostName)
+            linkList = net.linksBetween(DevAObject, DevBObject)
+            if linkList == []:
+                print(f"[{current_second}] (update_interval)  Error: Could not find link between {DevAhostName} and {DevBhostName}")
+                abort(net)
+            linkList[0].intf1.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth)) # bandwidth is in Mbps (I think)
+            linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth))
+            if global_verbose:
+                print(f"  [{current_second}] - Link ", linkName, " modified with delay ", linkDelay, " and bandwidth ", linkBandwidth)
+    #info("  Links available in current epoch: ", str(linksToEnableList) + str(linksToContinueList) + "\n")
+    currentLinks = linksToEnableList | linksToContinueList
+    print(f"  Links available in current epoch: {str(sorted(currentLinks))}")
+
+    info("*** Configuring routing\n")
+    if global_verbose:
+        print(f"  [{current_second}] Routing Dict for epoch {CurrEpochString}:")
+        pprint.pprint(fullRoutingDict[CurrEpochString])
+    #dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
+    prevRoutingDict = fullRoutingDict[PrevEpochString]
+    currRoutingDict = fullRoutingDict[CurrEpochString]
+    #gsRoutesIncluded = False
+    if global_verbose:
+        print(f"Checking for routes to remove")
+    for deviceName in prevRoutingDict:
+        if deviceName not in currRoutingDict: # if this device is not in the current epoch's routing dictionary, so remove all of its routes and any routes that other devices had to it
+            print(f"  [{current_second}] Removing routes for device {deviceName}")
+            for targetNetworkIP in prevRoutingDict[deviceName]:
+                prevNextHopIp, prevNextHopIntfName = prevRoutingDict[deviceName][targetNetworkIP]
+                devObject = net.get(deviceName)
+                if not use_node_python_script:
+                    cmdString = 'ip route del ' + targetNetworkIP + ' via ' + prevNextHopIp + ' dev ' + prevNextHopIntfName
+                    if global_verbose:
+                        print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
+                    devObject.cmd(cmdString)
+                elif use_management_net_messaging and not management_net_messaging_to_all:
+                    pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
+                elif use_management_net_messaging and management_net_messaging_to_all:
+                    gRPC_command = f"{targetNetworkIP} via {prevNextHopIp} dev {prevNextHopIntfName}"
+                    message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
+                    controller_node_relay_message_to_sat_node(deviceName, message)
+            deviceNetworkIP = devDict[deviceName][1]
+            for otherDeviceName in currRoutingDict: # for each device in the current epochs routing dictionary
+                if deviceNetworkIP in currRoutingDict[otherDeviceName]:
+                    nextHopIp, nextHopIntfName = currRoutingDict[otherDeviceName][deviceNetworkIP]
+                    devObject = net.get(otherDeviceName)
+                    if not use_node_python_script:
+                        cmdString = 'ip route del ' + deviceNetworkIP + ' via ' + nextHopIp + ' dev ' + nextHopIntfName
+                        if global_verbose:
+                            print(f"[{current_second}] Executing command on host " + otherDeviceName + ": ", cmdString)
+                        devObject.cmd(cmdString)
+                    elif use_management_net_messaging and not management_net_messaging_to_all:
+                        pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
+                    elif use_management_net_messaging and management_net_messaging_to_all:
+                        gRPC_command = f"{deviceNetworkIP} via {nextHopIp} dev {nextHopIntfName}"
+                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
+                        controller_node_relay_message_to_sat_node(otherDeviceName, message)   
+    if global_verbose:
+        print(f"Checking for routes to add/update")
+    for deviceName in currRoutingDict: # for each device in the current epochs routing dictionary
+        for targetNetworkIP in currRoutingDict[deviceName]:
+            nextHopTuple = currRoutingDict[deviceName][targetNetworkIP]
+            devHasPrevRoute = False
+            prevRouteNeedsChange = False
+            if deviceName in prevRoutingDict: # if this device was in the previous epoch's routing dictionary, check if the route has changed
+                devHasPrevRoute = True
+                if (targetNetworkIP in prevRoutingDict[deviceName]) and (nextHopTuple != prevRoutingDict[deviceName][targetNetworkIP]): # Had a route in the previous epoch and it has changed
+                    prevRouteNeedsChange = True
+                    # Remove old route
+                    if global_verbose:
+                        print(f"  [{current_second}] Removing old route for device {deviceName} to target network {targetNetworkIP}; changed to {nextHopTuple}")
+                    devObject = net.get(deviceName)
+                    if targetNetworkIP in prevRoutingDict[deviceName]:
+                        prevNextHopIp, prevNextHopIntfName = prevRoutingDict[deviceName][targetNetworkIP]
+                        if not use_node_python_script: # if sending commands via Mininet API
+                            cmdString = 'ip route del ' + targetNetworkIP + ' via ' + prevNextHopIp + ' dev ' + prevNextHopIntfName
+                            if global_verbose:
+                                print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
+                            retval = devObject.cmd(cmdString + " 2> error.tmp")
+                            #if (retval != 0):
+                            #    print(f"Error: Could not remove route for device {deviceName} to target network {targetNetworkIP}. Details:")
+                            #    error = devObject.cmdPrint('cat error.tmp')
+                            #    if 'Cannot find device' in error:
+                            #        devObject.cmdPrint('ip link show')
+                        elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                            pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
+                        elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands to all nodes via gRPC
+                            gRPC_command = f"{targetNetworkIP} via {prevNextHopIp} dev {prevNextHopIntfName}"
+                            message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
+                            controller_node_relay_message_to_sat_node(deviceName, message)
+            # Now add new route if needed
+            if not devHasPrevRoute or prevRouteNeedsChange:
+                nextHopIP, nextHopIntfName = nextHopTuple
+                if not use_node_python_script: # if sending commands via Mininet API
+                    devObject = net.get(deviceName)
+                    cmdString = 'ip route add ' + targetNetworkIP + ' via ' + nextHopIP + ' dev ' + nextHopIntfName
+                    if global_verbose:
+                        print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
+                    retval = devObject.cmd(cmdString + " 2> error.tmp")
+                    #if (retval != 0):
+                    #    print(f"Error: Could not add route for device {deviceName} to target network {targetNetworkIP}. Details:")
+                    #    error = devObject.cmdPrint('cat error.tmp')
+                    #    if 'Cannot find device' in error:
+                    #        devObject.cmdPrint('ip link show')
+                elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                    pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
+                elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                    gRPC_command = f"{targetNetworkIP} via {nextHopIP} dev {nextHopIntfName}"
+                    message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_ROUTES, "message": gRPC_command}
+                    controller_node_relay_message_to_sat_node(deviceName, message)
+        #if int(deviceName) >= TotalSatCnt: # if this is a ground station
+        #    gsRoutesIncluded = True
+    potentialDefaultGatewayNodes = [devName for devName in devDict.keys() if devName not in currRoutingDict.keys()]
+    if nodeIndexDict is not None:
+        potentialDefaultGatewayNodes = [devName for devName in potentialDefaultGatewayNodes if nodeIndexDict[devName]['type'] == 'CT'] # If using connectivity optimizer, only include nodes that are customer terminals
+    defaultGatewayNodeList = []
+    for devName in potentialDefaultGatewayNodes: # check if the device has only a single active interface
+        devObject, _, devIntfList = devDict[devName]
+        # Get list of all interface names for this device
+        devIntfNameList = [devIntfTuple[0] for devIntfTuple in devIntfList] # devIntfTupe format: (intfName, intfIPandCDR, distHostName, distIntfIP)
+        currLinksUp = [linkName for linkName in devIntfNameList if linkName in AllLinksDict[CurrEpochString].keys()]
+        if len(currLinksUp) > 4: # if the device has more than four active interfaces
+            print(f"\033[33m\tWARNING: Device {devName} is not in routing table but has more than one active interface this time interval. Skipping default route setup.\033[0m")
+            continue
+        defaultGatewayNodeList.append(devName)
+    if global_verbose: print(f"\033[34mList of nodes to use default routes: {defaultGatewayNodeList}\033[0m")
+    prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
+    currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
+    for nodeName in defaultGatewayNodeList:
+        linkNameFound = False
+        for prevLinkName in prevLinkNameList: # find name of link to this node in previous epoch
+            if nodeName in prevLinkName:
+                linkNameFound = True
+                break
+        if linkNameFound: # if the node was not connected to a satellite in the previous epoch, check if link has changed and needs to be removed/updated
+            if prevLinkName not in currLinkNameList:
+                if global_verbose: print(f"  [{current_second}] \033[34mChange in connected sat for ground station {nodeName}\033[0m")
+                try:
+                    gsObject = net.get(nodeName)
+                except KeyError:
+                    print(f"\033[31mError: Ground station {nodeName} not found in Mininet\033[0m")
+                    exit(-1)
+                # Remove previous default route from GS
+                if (not use_node_python_script) or (not use_management_net_messaging): # if sending commands via Mininet API
+                    command = 'ip route del 0/0'
+                    if global_verbose:
+                        print(f"[{current_second}] Executing command on ground station {nodeName}: {command}")
+                    gsObject.cmd(command)
+                    retVal = set_GS_default_route(nodeName, CurrEpochString) # Set default route
+                    if retVal == -1:
+                        print(f"\033[31mError setting default route for {nodeName}.\033[0m")
+                elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                    message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": "0/0"}
+                    controller_node_relay_message_to_sat_node(nodeName, message)
+                    nextHopIP = set_GS_default_route(nodeName, CurrEpochString, gRPC_message = True)
+                    message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_DFLT_ROUTE, "message": f"{nextHopIP}"}
+                    controller_node_relay_message_to_sat_node(nodeName, message)
+    """
+    if not gsRoutesIncluded: # if the routing file does not contain routes for GS's, set default routes for GS and routes for connected satellites, if needed
+        prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
+        currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
+        if use_connectivity_optimizer:
+            gsList = [source_devName, dest_devName]
+        else:
+            gsList = [str(i) for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt)]
+        for gsName in gsList:
+            for prevLinkName in prevLinkNameList:
+                if gsName in prevLinkName:
+                    break # find name of link to GS in previous epoch
+            if prevLinkName not in currLinkNameList: # GS no longer connected to previous satellite
+                if global_verbose:
+                    print(f"  [{current_second}] Change in connected sat for ground station {gsName}")
+                try:
+                    gsObject = net.get(gsName)
+                except KeyError:
+                    print(f"Error: Ground station {gsName} not found in Mininet")
+                    exit(-1)
+                # Remove previous default route from GS
+                if (not use_node_python_script) or (not use_management_net_messaging): # if sending commands via Mininet API
+                    command = 'ip route del 0/0'
+                    if global_verbose:
+                        print(f"[{current_second}] Executing command on ground station {gsName}: {command}")
+                    gsObject.cmd(command) # Remove previous default route
+                    retVal = set_GS_default_route(gsName, CurrEpochString)
+        
+                elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
+                    message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": "0/0"}
+                    controller_node_relay_message_to_sat_node(gsName, message)
+                    nextHopIP = set_GS_default_route(gsName, CurrEpochString, gRPC_message = True)
+                    message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_DFLT_ROUTE, "message": f"{nextHopIP}"}
+                    controller_node_relay_message_to_sat_node(gsName, message)
+                # Remove routes to GS from satellites
+    """
+
+    if use_app_manager:
+        appManager.rerun_app(EpochIntervalCounter) # Rerun app if needed (ie, CLI app)
+
+    # End of loop
+    EpochIntervalCounter += 1 
+    if simTimeMode == "continuous":
+        print(f"[{current_second}] (update_interval)  ~~~Interval update complete ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+    else: # Discrete time mode (default)
+        if use_app_manager and appManager.app_sleeps(): # Interval duration skipped for CLI app
+            sleepTime = EpochIntervalDuration+10
+            print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+            time.sleep(sleepTime)
+# End of update_interval function
+
 # ================== Main Function ==================
 def main():
     if os.geteuid() != 0:
@@ -674,13 +1020,20 @@ def main():
     if len(sys.argv) > 1:
         global config_file_path, config_file_name
         config_file_path, config_file_name = os.path.split(sys.argv[1])
-        config_file_path += "/" # returning the trailing slash to the path
+        if config_file_path == "":
+            config_file_path = "./"
+        else:
+            config_file_path += "/" # returning the trailing slash to the path
         print(f"Using config file: {config_file_name}")
 
     global devDict, CurrRoutingDict, PrevRoutingDict
-    global AllLinksDict, IntervalLinksDict
+    global AllLinksDict, IntervalLinksDict, fullRoutingDict
     global thread_list
-    global EpochIntervalCounter, EpochIntervalDuration
+    global EpochIntervalCounter, EpochIntervalCount, EpochIntervalDuration, EpochCurrentDateTime
+    global appManager
+    global net
+    global nodeIndexDict
+    global simTimeMode
     nodeIndexDict = None
 
     if use_yaml_config:
@@ -696,11 +1049,13 @@ def main():
         sim_config, constellation_config = get_config_info()
 
     if global_verbose:
+        global pprint
         import pprint
 
     constellationName = sim_config["ConstellationName"]
     use_connectivity_optimizer = sim_config["Optimize"]
     run_resource_logger = sim_config["MonitorResource"] if "MonitorResource" in sim_config else False
+    simTimeMode = sim_config["SimTimeMode"] if "SimTimeMode" in sim_config else "discrete"
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
     TotalGSCnt = int(constellation_config["TotalGSCnt"])
     ConnectivityMatrixPath = constellation_config["ConnectivityMatrixPath"]
@@ -710,6 +1065,11 @@ def main():
     EpochStartDateTime = constellation_config["EpochStartDateTime"]
     EpochCurrentDateTime = EpochStartDateTime
     EpochIntervalCounter = 0
+    if simTimeMode == "continuous":
+        global stop_event, update_lock, continuousTimeTotal
+        continuousTimeTotal = EpochIntervalDuration * EpochIntervalCount
+        stop_event = threading.Event()
+        update_lock = threading.Lock()
     print("Config values:")
     print("Constellation Name: ", constellationName)
     print("Total satellites: ", TotalSatCnt)
@@ -719,6 +1079,9 @@ def main():
     print("Epoch Interval Duration: ", EpochIntervalDuration)
     print("Epoch Interval Count: ", EpochIntervalCount)
     print("Epoch Start Date/Time: ", EpochStartDateTime)
+    print("Sim Time Mode: ", simTimeMode)
+    if simTimeMode == "continuous":
+        print("Continuous Time Total: ", continuousTimeTotal)
 
     ConnectivityFilePrefix = "topology_"
     ConnectivityFileSuffix = ".0.txt"
@@ -998,7 +1361,7 @@ def main():
                 if global_verbose:
                     print("- Link ", linkName, " enabled with delay ", linkDelay, " and bandwidth ", linkBandwidth)
 
-    print("Starting timer thread")
+    print("Starting administrative timer thread") # Used to keep track of administrative time only - not used for simulation time
     timer_thread = threading.Thread(target=increment_timer)
     timer_thread.daemon = True
     timer_thread.start()
@@ -1088,6 +1451,18 @@ def main():
             print(f"  [{current_second}] ~~Sleeping for 10 seconds to allow python scripts to start running~~\n")
             time.sleep(10) # wait for the python scripts to start running
     
+    # =================================================================
+    # Defining local function to perform all topology and routing updates at each epoch (defined hear to access local variables)
+    
+
+    # =================================================================
+    # If running simulation in continuous mode, start the update timing thread
+    if simTimeMode == "continuous":
+        print(f"[{current_second}] Starting continuous time mode update timing thread")
+        update_timing_thread = threading.Thread(target=interval_update_timing_thread, args=(EpochIntervalDuration, EpochIntervalCount))
+        update_timing_thread.daemon = True
+        update_timing_thread.start()
+        thread_list.append(update_timing_thread)
 
     # =================================================================
     if use_app_manager:
@@ -1101,263 +1476,28 @@ def main():
     EpochIntervalCounter += 1
     if global_verbose:
         print(f"[{current_second}] Simulating {len(devDict)} nodes")
-    if appManager.app_sleeps(): # Does the app put the control script to sleep for interval duration? (Interval duration skipped for CLI app)
-        sleepTime = EpochIntervalDuration+10
-        print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
-        time.sleep(sleepTime) # Wait interval duration before starting main program loop
+    
+    if simTimeMode == "continuous":
+        print(f"[{current_second}] Starting continuous time mode main loop")
+        start_time = time.time()
 
-    # Start of Loop
-    while (EpochIntervalCounter < EpochIntervalCount):
-        appManager.print_to_output_file(f"[{current_second}] Change to Interval Number {EpochIntervalCounter}")
-        # Update epoch time to next interval
-        EpochPreviousDateTime = EpochCurrentDateTime
-        PrevEpochString = EpochPreviousDateTime.strftime("%Y_%m_%d_%H_%M_%S")
-        EpochCurrentDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
-        CurrEpochString = EpochCurrentDateTime.strftime("%Y_%m_%d_%H_%M_%S")
-        info("*** [" + str(current_second) + "]Setting conditions at epoch " + CurrEpochString + "\n")
+        while not stop_event.is_set():
+            # Check every second for updates
+            time.sleep(1)
 
-        info("*** Updating link states\n")
-        prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
-        currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
-        linksToDisableList = set(prevLinkNameList) - set(currLinkNameList)
-        linksToEnableList = set(currLinkNameList) - set(prevLinkNameList)
-        linksToContinueList = set(prevLinkNameList) & set(currLinkNameList)
-
-        info("*** Disabling links\n")
-        for linkName in linksToDisableList:
-            DevAhostName, DevBhostName = linkName.split("_")
-            DevAObject = net.get(DevAhostName)
-            DevBObject = net.get(DevBhostName)
-            cmdString = 'ip link set ' + linkName + ' down'
-            if global_verbose:
-                print(f"[{current_second}] Executing command on hosts ", DevAhostName, ", ", DevBhostName, ": ", cmdString)
-            DevAObject.cmd(cmdString)
-            DevBObject.cmd(cmdString)
-            if global_verbose:
-                print("  - Link ", linkName, " disabled")
-
-        info("*** Enabling links\n")
-        for linkName in linksToEnableList:
-            DevAhostName, DevBhostName = linkName.split("_")
-            DevAObject = net.get(DevAhostName)
-            DevBObject = net.get(DevBhostName)
-            cmdString = 'ip link set ' + linkName + ' up'
-            if global_verbose:
-                print(f"[{current_second}] Executing command on hosts ", DevAhostName, ", ", DevBhostName, ": ", cmdString)
-            DevAObject.cmd(cmdString)
-            DevBObject.cmd(cmdString)
-            # Set link delay and bandwidth
-            linkDelay, linkBandwidth = AllLinksDict[CurrEpochString][linkName]
-            linkList = net.linksBetween(DevAObject, DevBObject)
-            linkList[0].intf1.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth)) # bandwidth is in Mbps (I think)
-            linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth))
-            if global_verbose:
-                print("  - Link ", linkName, " enabled with delay ", linkDelay, " and bandwidth ", linkBandwidth)
-
-        info("*** Verifying continuing links\n")
-        for linkName in linksToContinueList:
-            if AllLinksDict[PrevEpochString][linkName] != AllLinksDict[CurrEpochString][linkName]:
-                # Set link delay and bandwidth
-                linkDelay, linkBandwidth = AllLinksDict[CurrEpochString][linkName]
-                linkList = net.linksBetween(DevAObject, DevBObject)
-                linkList[0].intf1.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth)) # bandwidth is in Mbps (I think)
-                linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth))
-                if global_verbose:
-                    print(f"  [{current_second}] - Link ", linkName, " modified with delay ", linkDelay, " and bandwidth ", linkBandwidth)
-        #info("  Links available in current epoch: ", str(linksToEnableList) + str(linksToContinueList) + "\n")
-        currentLinks = linksToEnableList | linksToContinueList
-        print(f"  Links available in current epoch: {str(sorted(currentLinks))}")
-
-        info("*** Configuring routing\n")
-        if global_verbose:
-            print(f"  [{current_second}] Routing Dict for epoch {CurrEpochString}:")
-            pprint.pprint(fullRoutingDict[CurrEpochString])
-        #dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
-        prevRoutingDict = fullRoutingDict[PrevEpochString]
-        currRoutingDict = fullRoutingDict[CurrEpochString]
-        #gsRoutesIncluded = False
-        if global_verbose:
-            print(f"Checking for routes to remove")
-        for deviceName in prevRoutingDict:
-            if deviceName not in currRoutingDict: # if this device is not in the current epoch's routing dictionary, so remove all of its routes and any routes that other devices had to it
-                print(f"  [{current_second}] Removing routes for device {deviceName}")
-                for targetNetworkIP in prevRoutingDict[deviceName]:
-                    prevNextHopIp, prevNextHopIntfName = prevRoutingDict[deviceName][targetNetworkIP]
-                    devObject = net.get(deviceName)
-                    if not use_node_python_script:
-                        cmdString = 'ip route del ' + targetNetworkIP + ' via ' + prevNextHopIp + ' dev ' + prevNextHopIntfName
-                        if global_verbose:
-                            print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
-                        devObject.cmd(cmdString)
-                    elif use_management_net_messaging and not management_net_messaging_to_all:
-                        pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
-                    elif use_management_net_messaging and management_net_messaging_to_all:
-                        gRPC_command = f"{targetNetworkIP} via {prevNextHopIp} dev {prevNextHopIntfName}"
-                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
-                        controller_node_relay_message_to_sat_node(deviceName, message)
-                deviceNetworkIP = devDict[deviceName][1]
-                for otherDeviceName in currRoutingDict: # for each device in the current epochs routing dictionary
-                    if deviceNetworkIP in currRoutingDict[otherDeviceName]:
-                        nextHopIp, nextHopIntfName = currRoutingDict[otherDeviceName][deviceNetworkIP]
-                        devObject = net.get(otherDeviceName)
-                        if not use_node_python_script:
-                            cmdString = 'ip route del ' + deviceNetworkIP + ' via ' + nextHopIp + ' dev ' + nextHopIntfName
-                            if global_verbose:
-                                print(f"[{current_second}] Executing command on host " + otherDeviceName + ": ", cmdString)
-                            devObject.cmd(cmdString)
-                        elif use_management_net_messaging and not management_net_messaging_to_all:
-                            pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
-                        elif use_management_net_messaging and management_net_messaging_to_all:
-                            gRPC_command = f"{deviceNetworkIP} via {nextHopIp} dev {nextHopIntfName}"
-                            message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
-                            controller_node_relay_message_to_sat_node(otherDeviceName, message)   
-        if global_verbose:
-            print(f"Checking for routes to add/update")
-        for deviceName in currRoutingDict: # for each device in the current epochs routing dictionary
-            for targetNetworkIP in currRoutingDict[deviceName]:
-                nextHopTuple = currRoutingDict[deviceName][targetNetworkIP]
-                devHasPrevRoute = False
-                prevRouteNeedsChange = False
-                if deviceName in prevRoutingDict: # if this device was in the previous epoch's routing dictionary, check if the route has changed
-                    devHasPrevRoute = True
-                    if (targetNetworkIP in prevRoutingDict[deviceName]) and (nextHopTuple != prevRoutingDict[deviceName][targetNetworkIP]): # Had a route in the previous epoch and it has changed
-                        prevRouteNeedsChange = True
-                        # Remove old route
-                        if global_verbose:
-                            print(f"  [{current_second}] Removing old route for device {deviceName} to target network {targetNetworkIP}; changed to {nextHopTuple}")
-                        devObject = net.get(deviceName)
-                        if targetNetworkIP in prevRoutingDict[deviceName]:
-                            prevNextHopIp, prevNextHopIntfName = prevRoutingDict[deviceName][targetNetworkIP]
-                            if not use_node_python_script: # if sending commands via Mininet API
-                                cmdString = 'ip route del ' + targetNetworkIP + ' via ' + prevNextHopIp + ' dev ' + prevNextHopIntfName
-                                if global_verbose:
-                                    print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
-                                retval = devObject.cmd(cmdString + " 2> error.tmp")
-                                #if (retval != 0):
-                                #    print(f"Error: Could not remove route for device {deviceName} to target network {targetNetworkIP}. Details:")
-                                #    error = devObject.cmdPrint('cat error.tmp')
-                                #    if 'Cannot find device' in error:
-                                #        devObject.cmdPrint('ip link show')
-                            elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
-                                pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
-                            elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands to all nodes via gRPC
-                                gRPC_command = f"{targetNetworkIP} via {prevNextHopIp} dev {prevNextHopIntfName}"
-                                message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": gRPC_command}
-                                controller_node_relay_message_to_sat_node(deviceName, message)
-                # Now add new route if needed
-                if not devHasPrevRoute or prevRouteNeedsChange:
-                    nextHopIP, nextHopIntfName = nextHopTuple
-                    if not use_node_python_script: # if sending commands via Mininet API
-                        devObject = net.get(deviceName)
-                        cmdString = 'ip route add ' + targetNetworkIP + ' via ' + nextHopIP + ' dev ' + nextHopIntfName
-                        if global_verbose:
-                            print(f"[{current_second}] Executing command on host " + deviceName + ": ", cmdString)
-                        retval = devObject.cmd(cmdString + " 2> error.tmp")
-                        #if (retval != 0):
-                        #    print(f"Error: Could not add route for device {deviceName} to target network {targetNetworkIP}. Details:")
-                        #    error = devObject.cmdPrint('cat error.tmp')
-                        #    if 'Cannot find device' in error:
-                        #        devObject.cmdPrint('ip link show')
-                    elif use_management_net_messaging and not management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
-                        pass # TO DO:  IMPLEMENT METHOD TO SEND VIA gRPC ONLY TO HARDWARE NODES
-                    elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
-                        gRPC_command = f"{targetNetworkIP} via {nextHopIP} dev {nextHopIntfName}"
-                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_ROUTES, "message": gRPC_command}
-                        controller_node_relay_message_to_sat_node(deviceName, message)
-            #if int(deviceName) >= TotalSatCnt: # if this is a ground station
-            #    gsRoutesIncluded = True
-        potentialDefaultGatewayNodes = [devName for devName in devDict.keys() if devName not in currRoutingDict.keys()]
-        if nodeIndexDict is not None:
-            potentialDefaultGatewayNodes = [devName for devName in potentialDefaultGatewayNodes if nodeIndexDict[devName]['type'] == 'CT'] # If using connectivity optimizer, only include nodes that are customer terminals
-        defaultGatewayNodeList = []
-        for devName in potentialDefaultGatewayNodes: # check if the device has only a single active interface
-            devObject, _, devIntfList = devDict[devName]
-            # Get list of all interface names for this device
-            devIntfNameList = [devIntfTuple[0] for devIntfTuple in devIntfList] # devIntfTupe format: (intfName, intfIPandCDR, distHostName, distIntfIP)
-            currLinksUp = [linkName for linkName in devIntfNameList if linkName in AllLinksDict[CurrEpochString].keys()]
-            if len(currLinksUp) > 4: # if the device has more than four active interfaces
-                print(f"\033[33m\tWARNING: Device {devName} is not in routing table but has more than one active interface this time interval. Skipping default route setup.\033[0m")
-                continue
-            defaultGatewayNodeList.append(devName)
-        if global_verbose: print(f"\033[34mList of nodes to use default routes: {defaultGatewayNodeList}\033[0m")
-        prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
-        currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
-        for nodeName in defaultGatewayNodeList:
-            linkNameFound = False
-            for prevLinkName in prevLinkNameList: # find name of link to this node in previous epoch
-                if nodeName in prevLinkName:
-                    linkNameFound = True
-                    break
-            if linkNameFound: # if the node was not connected to a satellite in the previous epoch, check if link has changed and needs to be removed/updated
-                if prevLinkName not in currLinkNameList:
-                    if global_verbose: print(f"  [{current_second}] \033[34mChange in connected sat for ground station {nodeName}\033[0m")
-                    try:
-                        gsObject = net.get(nodeName)
-                    except KeyError:
-                        print(f"\033[31mError: Ground station {nodeName} not found in Mininet\033[0m")
-                        exit(-1)
-                    # Remove previous default route from GS
-                    if (not use_node_python_script) or (not use_management_net_messaging): # if sending commands via Mininet API
-                        command = 'ip route del 0/0'
-                        if global_verbose:
-                            print(f"[{current_second}] Executing command on ground station {nodeName}: {command}")
-                        gsObject.cmd(command)
-                        retVal = set_GS_default_route(nodeName, CurrEpochString) # Set default route
-                        if retVal == -1:
-                            print(f"\033[31mError setting default route for {nodeName}.\033[0m")
-                    elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
-                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": "0/0"}
-                        controller_node_relay_message_to_sat_node(nodeName, message)
-                        nextHopIP = set_GS_default_route(nodeName, CurrEpochString, gRPC_message = True)
-                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_DFLT_ROUTE, "message": f"{nextHopIP}"}
-                        controller_node_relay_message_to_sat_node(nodeName, message)
-        """
-        if not gsRoutesIncluded: # if the routing file does not contain routes for GS's, set default routes for GS and routes for connected satellites, if needed
-            prevLinkNameList = list(AllLinksDict[PrevEpochString].keys())
-            currLinkNameList = list(AllLinksDict[CurrEpochString].keys())
-            if use_connectivity_optimizer:
-                gsList = [source_devName, dest_devName]
-            else:
-                gsList = [str(i) for i in range(TotalSatCnt, TotalSatCnt + TotalGSCnt)]
-            for gsName in gsList:
-                for prevLinkName in prevLinkNameList:
-                    if gsName in prevLinkName:
-                        break # find name of link to GS in previous epoch
-                if prevLinkName not in currLinkNameList: # GS no longer connected to previous satellite
-                    if global_verbose:
-                        print(f"  [{current_second}] Change in connected sat for ground station {gsName}")
-                    try:
-                        gsObject = net.get(gsName)
-                    except KeyError:
-                        print(f"Error: Ground station {gsName} not found in Mininet")
-                        exit(-1)
-                    # Remove previous default route from GS
-                    if (not use_node_python_script) or (not use_management_net_messaging): # if sending commands via Mininet API
-                        command = 'ip route del 0/0'
-                        if global_verbose:
-                            print(f"[{current_second}] Executing command on ground station {gsName}: {command}")
-                        gsObject.cmd(command) # Remove previous default route
-                        retVal = set_GS_default_route(gsName, CurrEpochString)
-            
-                    elif use_management_net_messaging and management_net_messaging_to_all: # if sending commands via gRPC (TO DO: implement method to send via gRPC only to hardware nodes)
-                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_REMOVE_ROUTES, "message": "0/0"}
-                        controller_node_relay_message_to_sat_node(gsName, message)
-                        nextHopIP = set_GS_default_route(gsName, CurrEpochString, gRPC_message = True)
-                        message = {"message_type": spacenet_gRPC_p2p_messaging.MININET_ADD_DFLT_ROUTE, "message": f"{nextHopIP}"}
-                        controller_node_relay_message_to_sat_node(gsName, message)
-                    # Remove routes to GS from satellites
-        """
-
-        if use_app_manager:
-            appManager.rerun_app(EpochIntervalCounter) # Rerun app if needed (ie, CLI app)
-
-        # End of loop
-        EpochIntervalCounter += 1 
-        if use_app_manager and appManager.app_sleeps(): # Interval duration skipped for CLI app
+            # Stop if we've exceeded our total run time
+            if (time.time() - start_time) > continuousTimeTotal:
+                break
+    else: # Discrete mode (default)
+        if appManager.app_sleeps(): # Does the app put the control script to sleep for interval duration? (Interval duration skipped for CLI app)
             sleepTime = EpochIntervalDuration+10
             print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
-            time.sleep(sleepTime)
-    # =================================================================
+            time.sleep(sleepTime) # Wait initial interval duration before starting main program loop
+
+        # Start of Loop
+        while (EpochIntervalCounter < EpochIntervalCount):
+            update_interval()
+    
     # Application stop
     if use_app_manager:
         print(f"[{current_second}] Stopping application")
