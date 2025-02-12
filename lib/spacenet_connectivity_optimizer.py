@@ -2,6 +2,7 @@
 import datetime
 import re # for regex use in filename identification
 import os
+import sys # for sys.modules
 
 global_verbose = True
 start_color_string = "\033["
@@ -78,7 +79,9 @@ def parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTupl
     # TROUBLESHOOTING
     if sourceNode not in nodeIndexDict.keys():
         print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) ERROR: Source Node {sourceNode} not found in node index dictionary.{end_color_string}")
-        print(f"(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) Node Index Dictionary: {nodeIndexDict}")
+        print(f"(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) Node Index Dictionary:")
+        import pprint
+        pprint.pprint(nodeIndexDict)
         return None
     if destinationNode not in nodeIndexDict.keys():
         print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) ERROR: Destination Node {destinationNode} not found in node index dictionary.{end_color_string}")
@@ -206,6 +209,8 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
                     routeFound = True
                     break
             if not routeFound: # If direct route between source/dest nodes not in routing file, look for route between connecting nodes (ground stations not included in routing file)
+                print(f"{start_color_string}{color_yellow}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) WARNING: Could not find direct route between source node {sourceNode} and destination node {destinationNode} in routing file.  Looking for route between connecting nodes {sourceConnectingNode} and {destinationConnectingNode}.{end_color_string}")
+                f.seek(0) # Reset file pointer to beginning of file
                 for line in f:
                     line = line.strip() # Remove leading/trailing whitespace
                     line = line.replace(' ', '') # Remove spaces (if any)
