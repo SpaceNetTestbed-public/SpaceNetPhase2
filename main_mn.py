@@ -1471,6 +1471,7 @@ def main():
         print(f"[{current_second}] Starting application and running for {appManager.get_app_run_time()} seconds")
         #appManager.update_app_run_time(ApplicationRunTime)
         appManager.start_app(EpochIntervalCounter)
+        t0_app = time.perf_counter_ns()
 
     # =================================================================
     EpochIntervalCounter += 1
@@ -1501,6 +1502,7 @@ def main():
     # Application stop
     if use_app_manager:
         print(f"[{current_second}] Stopping application")
+        tf_app = time.perf_counter_ns()
         appManager.stop_app()
     
     # Shutdown topology and services
@@ -1533,6 +1535,7 @@ def main():
         os.kill(resource_log_process.pid, signal.SIGTERM)
 
     print("EMU RUNTIME: " + str((time.perf_counter_ns() - t0_mn)*1e-9))
+    print(f"APP TIME: {(tf_app-t0_app)*1e-9} seconds")
 
     exit()
 
