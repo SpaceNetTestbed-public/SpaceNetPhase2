@@ -6,6 +6,7 @@ DeleteAppResults: False
 Verbose: True
 Optimize: True
 MonitorResource: False
+SimTimeMode: "discrete" # Options: discrete, continuous (discrete is default if none is specified)
 # ~~~ App configurations ~~~
 AppName: Ping # Options- Ping, iPerf, CLI
 # For Ping and iPerf
