@@ -4,7 +4,7 @@ from mininet.node import Host
 from mininet.node import Node
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
-from mininet.link import TCLink
+from mininet.link import TCLink, TCIntf
 
 import json # for JSON encoding/decoding
 
@@ -41,7 +41,8 @@ use_management_net_messaging = False # requires use of node python script and py
 use_yaml_config = True
 use_app_manager = True # Sim currently doesn't work if set to False
 use_connectivity_optimizer = False
-
+pre_ping = True # Pre-ping links before starting simulation to attempt ARP table population
+dynamic_link_queue_size = False # Calculate netem queue size based on link bandwidth and latency
 # ~~~~~~~~~~~~~~~~~~ GENERAL GLOBAL VARIABLES ~~~~~~~~~~~~~~~~~~
 
 # ===== GLOBAL VARIABLES =====
@@ -73,6 +74,10 @@ EpochIntervalCounter = 0
 EpochIntervalDuration = 0
 EpochIntervalCount = None
 
+# =============== Link Variables ==================
+r2q = 10 # Default value for r2q parameter in tc commands
+default_netem_queue_size = 2000 # Default value for netem queue size when not calculating dynamically
+max_netem_queue_size = 20000
 # =============== Variables Specific to Network Changes between Intervals ===============
 appManager = None
 EpochCurrentDateTime = None
@@ -166,6 +171,33 @@ class LinuxRouter( Node ):
         self.cmd( 'sysctl net.ipv4.ip_forward=0' )
         super( LinuxRouter, self ).terminate()
 
+# Mininet API method overrides (aka 'Monkey Patches')
+# ================== Mininet API Overrides ==================
+# Override Mininet TCLink class to add r2q parameter to bwCmds method
+print("[[Patching Mininet TCLink class to add r2q parameter to bwCmds method]]")
+_original_bwCmds = TCIntf.bwCmds
+# "Wraps" original TCIntf.bwCmds to add r2q parameter; method signature derived from Mininet source code (v2.3.0)
+def bwCmds_with_r2q(self, bw=None, speedup=0, use_hfsc=False, use_tbf=False, latency_ms=None, enable_ecn=False, enable_red=False):
+    global r2q # Use global r2q value - must be modified prior to creating links
+    # Call original method with all parameters
+    cmds, parent = _original_bwCmds(self, bw=bw, speedup=speedup, use_hfsc=use_hfsc, use_tbf=use_tbf, latency_ms=latency_ms, enable_ecn=enable_ecn, enable_red=enable_red)
+    # if r2q is anything other than 10, modify the tc command to include the r2q parameter
+    if r2q != 10:
+        newCmds = []
+        for cmd in cmds:
+            # Only patch lines that set 'root handle 5:0 htb default 1' (i.e. the root qdisc)
+            if 'htb default 1' in cmd and 'root handle 5:' in cmd:
+                replacementString = f"htb r2q {r2q} default 1"
+                cmd = cmd.replace('htb default 1', replacementString)
+            newCmds.append(cmd)
+        cmds = newCmds
+        print(f"Modified tc commands to include r2q parameter: {r2q}")
+    else:
+        print("Using default r2q value of 10; no modification of tc commands")
+    return cmds, parent
+# Now assign our patched version back to the original Mininet class
+TCIntf.bwCmds = bwCmds_with_r2q
+
 # Functions
 # ================== Network / IP Functions ==================
 def getNextSatIP():
@@ -212,6 +244,118 @@ def getNextManagementNetworkIP():
     managementNetworkIP = nextManagementNetworkIP
     nextManagementNetworkIP += 1
     return managementNetworkIP
+
+def parallel_ping_links(linkNameList, epochLinksDict, timeout_factor=1):
+    """
+    Launch a parallel ping -c1 from intf1.node -> intf2.ip 
+    for each link in 'links' and collect results.
+
+    :return: A dict { link: retcode } of ping exit codes
+    """
+    from subprocess import Popen
+    from math import ceil
+
+    # Find largest linkDelay
+    maxLinkDelay = 0
+    maxLinkDelayName = ""
+    for linkName in linkNameList:
+        linkDelay, _ = epochLinksDict[linkName]
+        linkDelay = float(linkDelay)
+        if linkDelay > maxLinkDelay:
+            maxLinkDelay = linkDelay
+            maxLinkDelayName = linkName
+    maxTimeout = ceil((2 * (linkDelay/1000)) * timeout_factor)
+    if maxTimeout > 10:
+        print(f"Warning: Timeout for link {maxLinkDelayName} is {maxTimeout} seconds (linkDelay: {linkDelay}ms and timeout_factor: {timeout_factor}).  May have excessive waiting.")
+
+    ping_procs = {}
+    for linkName in linkNameList:
+        linkDelay, _ = epochLinksDict[linkName]
+        DevAhostName, DevBhostName = linkName.split("_")
+        DevAObject = net.get(DevAhostName)
+        DevBObject = net.get(DevBhostName)
+        link = net.linksBetween(DevAObject, DevBObject)[0]
+        #link = net.links(DevAhostName, DevBhostName)[0]
+        nodeA = link.intf1.node
+        ipB = link.intf2.ip
+        # Skip if no IP
+        if not ipB:
+            continue
+        
+        timeout = ceil((2 * (float(linkDelay))/1000) * timeout_factor) # Setting timeout to 2x link delay times the timeout factor (linkDelay is in ms)
+        cmd = f"ping -c1 -W {timeout} {ipB}"
+        proc = nodeA.popen(cmd)
+        ping_procs[linkName] = proc
+
+    # Wait for pings to finish and collect retcodes
+    results = {}
+    numLinks = len(ping_procs)
+    cur_link_num = 1
+    for linkName, proc in ping_procs.items():
+        print(f"Pinging link {cur_link_num}/{numLinks}: {linkName}", end="\r")
+        cur_link_num += 1
+        try:
+            retcode = proc.wait()
+        except KeyboardInterrupt:
+            print("Caught KeyboardInterrupt: Terminating ping processes...")
+            for proc in ping_procs.values():
+                proc.terminate()
+            abort(net)
+        results[linkName] = retcode
+    print("\nDone") # Move to next line
+    return results
+
+def parallel_ping_neighbors_with_retries(epochLinksDict, max_retries=3, timeout_factor = 1):    
+    # Attempt to populate ARP tables by pinging from each link's intf1.node to intf2.ip, retrying up to max_retries times for failures.
+    print(f"=== Populating ARP tables by pinging neighbors with {max_retries} retries ===")
+    remaining_links = list(epochLinksDict.keys())
+    successful_links = set()
+
+    for attempt in range(1, max_retries + 1):
+        print(f"=== Attempt {attempt}/{max_retries} ===")
+        results = parallel_ping_links(linkNameList=remaining_links, epochLinksDict=epochLinksDict, timeout_factor=timeout_factor)
+
+        # Check for failures
+        new_failures = []
+        for linkName, retcode in results.items():
+            if retcode == 0:
+                # success
+                successful_links.add(linkName)
+            else:
+                # failed
+                new_failures.append(linkName)
+
+        if not new_failures:
+            # everything succeeded
+            print("All links succeeded on this attempt!")
+            break
+        else:
+            print(f"{len(new_failures)} links failed in attempt {attempt}.")
+            if attempt < max_retries:
+                print("Retrying failed links...")
+                remaining_links = new_failures  # only re-try failures
+            else:
+                print("No more retries left.")
+
+    # Print summary
+    epoch_links = list(epochLinksDict.keys())
+    failed_links = [l for l in epoch_links if l not in successful_links]
+    print(f"=== Ping Summary ===")
+    print(f"  Succeeded: {len(successful_links)}/{len(epoch_links)}")
+    if failed_links:
+        print("  Failed links:")
+        for l in failed_links:
+            DevAhostName, DevBhostName = l.split("_")
+            DevAObject = net.get(DevAhostName)
+            DevBObject = net.get(DevBhostName)
+            link = net.linksBetween(DevAObject, DevBObject)[0]
+            #link = net.links(DevAhostName, DevBhostName)[0]
+            nodeA = link.intf1.node
+            ipB = link.intf2.ip
+            print(f"    {nodeA.name} -> {ipB}")
+
+    return failed_links
+
 
 # ================== Device / Object Functions ==================
 def printDevDict():
@@ -1033,7 +1177,7 @@ def main():
     global appManager
     global net
     global nodeIndexDict
-    global simTimeMode
+    global simTimeMode, r2q, pre_ping, dynamic_link_queue_size
     nodeIndexDict = None
 
     if use_yaml_config:
@@ -1056,6 +1200,9 @@ def main():
     use_connectivity_optimizer = sim_config["Optimize"]
     run_resource_logger = sim_config["MonitorResource"] if "MonitorResource" in sim_config else False
     simTimeMode = sim_config["SimTimeMode"] if "SimTimeMode" in sim_config else "discrete"
+    r2q = sim_config["R2Q"] if "R2Q" in sim_config else r2q # use default value if not in config file
+    dynamic_link_queue_size = sim_config["DynamicLinkQueueSize"] if "DynamicLinkQueueSize" in sim_config else dynamic_link_queue_size # use default value if not in config file
+    pre_ping = sim_config["PrePing"] if "PrePing" in sim_config else pre_ping # use default value if not in config file 
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
     TotalGSCnt = int(constellation_config["TotalGSCnt"])
     ConnectivityMatrixPath = constellation_config["ConnectivityMatrixPath"]
@@ -1071,17 +1218,21 @@ def main():
         stop_event = threading.Event()
         update_lock = threading.Lock()
     print("Config values:")
-    print("Constellation Name: ", constellationName)
-    print("Total satellites: ", TotalSatCnt)
-    print("Total ground stations: ", TotalGSCnt)
-    print("Connectivity Matrix Path: ", ConnectivityMatrixPath)
-    print("Routing File Path: ", RoutingFilePath)
-    print("Epoch Interval Duration: ", EpochIntervalDuration)
-    print("Epoch Interval Count: ", EpochIntervalCount)
-    print("Epoch Start Date/Time: ", EpochStartDateTime)
-    print("Sim Time Mode: ", simTimeMode)
+    print("  Constellation Name: ", constellationName)
+    print("  Total satellites: ", TotalSatCnt)
+    print("  Total ground stations: ", TotalGSCnt)
+    print("  Connectivity Matrix Path: ", ConnectivityMatrixPath)
+    print("  Routing File Path: ", RoutingFilePath)
+    print("  Epoch Interval Duration: ", EpochIntervalDuration)
+    print("  Epoch Interval Count: ", EpochIntervalCount)
+    print("  Epoch Start Date/Time: ", EpochStartDateTime)
+    print("  Sim Time Mode: ", simTimeMode)
     if simTimeMode == "continuous":
-        print("Continuous Time Total: ", continuousTimeTotal)
+        print("    Continuous Time Total: ", continuousTimeTotal)
+    print("  R2Q: ", r2q)
+    print("  Dynamic Link Queue Size: ", dynamic_link_queue_size)
+    print("  Pre-Ping: ", pre_ping)
+    print("  Verbose: ", global_verbose)
 
     ConnectivityFilePrefix = "topology_"
     ConnectivityFileSuffix = ".0.txt"
@@ -1213,7 +1364,18 @@ def main():
                 DevBIntfName = DevAhostName + '_' + DevBhostName
                 DevAIntfIP = str(ipaddress.ip_interface(str(LinkNetworkIP + 1) + '/30')) # Get IP for DevA interface
                 DevBIntfIP = str(ipaddress.ip_interface(str(LinkNetworkIP + 2) + '/30')) # Get IP for DevB interface
-                net.addLink(DevAhostName, DevBhostName, intfName1=DevAIntfName, intfName2=DevBIntfName, params1={'ip':DevAIntfIP}, params2={'ip':DevBIntfIP}, cls=TCLink, delay=linkDelay) # Add link to Mininet topology (where does bandwidth get used?)
+                # Estimate necessary queue limit size based on bandwidth and delay
+                max_segment_size = 1500 # default estimate
+                if dynamic_link_queue_size:
+                    computed_link_queue_size = (float(linkDelay) / 1000) * (float(linkBandwidth) * 1000000) / (8 * max_segment_size) # linkDelay is in ms; bandwidth is in Mbps
+                    if computed_link_queue_size > max_netem_queue_size:
+                        print(f"[[ Warning]] : Estimated link queue size for link {linkName} is {int(computed_link_queue_size):,} packets!! Setting to {max_netem_queue_size:,} packets.")
+                    link_queue_size = int(max(1000, min(computed_link_queue_size, 20000))) # limit to 1000-20000 packets; larger values may cause Mininet to hang
+                    if global_verbose:
+                        print(f"  [{current_second}] Setting link queue size for link {linkName} to {link_queue_size} packets (bandwidth: {linkBandwidth} Mbps, delay: {linkDelay} ms)")
+                else:
+                    link_queue_size = default_netem_queue_size
+                net.addLink(DevAhostName, DevBhostName, intfName1=DevAIntfName, intfName2=DevBIntfName, params1={'ip':DevAIntfIP}, params2={'ip':DevBIntfIP}, cls=TCLink, delay=linkDelay, max_queue_size=link_queue_size) # Add link to Mininet topology (where does bandwidth get used?)
                 link_tracker.append(linkName)
                 devDict[DevAhostName][2].append((DevAIntfName, DevAIntfIP, DevBhostName, DevBIntfIP)) # add link to device A interface list
                 devDict[DevBhostName][2].append((DevBIntfName, DevBIntfIP, DevAhostName, DevAIntfIP)) # add link to device B interface list
@@ -1356,10 +1518,10 @@ def main():
                 # Set link delay and bandwidth
                 linkDelay, linkBandwidth = AllLinksDict[CurrEpochString][linkName]
                 linkList = net.linksBetween(DevAObject, DevBObject) # Get the link between the two hosts
-                linkList[0].intf1.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth)) # bandwidth is in Mbps (I think)
-                linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth))
+                linkList[0].intf1.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth), max_queue_size=link_queue_size) # bandwidth is in Mbps
+                linkList[0].intf2.config(delay=str(linkDelay)+'ms', bw=float(linkBandwidth), max_queue_size=link_queue_size)
                 if global_verbose:
-                    print("- Link ", linkName, " enabled with delay ", linkDelay, " and bandwidth ", linkBandwidth)
+                    print("- Link ", linkName, " enabled with delay ", linkDelay, " and bandwidth ", linkBandwidth, " Mbps")
 
     print("Starting administrative timer thread") # Used to keep track of administrative time only - not used for simulation time
     timer_thread = threading.Thread(target=increment_timer)
@@ -1450,11 +1612,10 @@ def main():
         else:
             print(f"  [{current_second}] ~~Sleeping for 10 seconds to allow python scripts to start running~~\n")
             time.sleep(10) # wait for the python scripts to start running
-    
     # =================================================================
-    # Defining local function to perform all topology and routing updates at each epoch (defined hear to access local variables)
-    
-
+    # Attempt to populate ARP tables for all devices
+    if pre_ping:
+        parallel_ping_neighbors_with_retries(epochLinksDict=epochLinksDict, max_retries=4, timeout_factor=3)
     # =================================================================
     # If running simulation in continuous mode, start the update timing thread
     if simTimeMode == "continuous":

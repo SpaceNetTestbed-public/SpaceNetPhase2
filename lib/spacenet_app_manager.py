@@ -425,6 +425,7 @@ class CLIApp:
         self.starting_interval = starting_interval
         self.CLI_count = CLI_count
         self.verbose = verbose
+        self.app_run_time = None
 
         self.app_sleeps = False
 
