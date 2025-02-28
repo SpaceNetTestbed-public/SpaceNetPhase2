@@ -491,8 +491,6 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                 break
         if satName == None:
             print("Error: Could not find satellite connected to ground station ", gsName)
-            # input("Press Enter to continue...")
-            # return IntervalRoutesDict
             continue
         if satName not in route:
             continue
