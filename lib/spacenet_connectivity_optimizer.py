@@ -187,10 +187,24 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
             print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find routing file for epoch {epochIntervalNum} at {EpochStart + datetime.timedelta(seconds=(epochIntervalNum * EpochIntervalDuration))}{end_color_string}")
             return None
         sourceConnectingNodeList, destinationConnectingNodeList = endpointConnectingNodeByIntervalDict[epochIntervalNum]
-        sourceConnectingNode = sourceConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and source node)
-        destinationConnectingNode = destinationConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and destination node)
+        if len(sourceConnectingNodeList) > 0:
+            sourceConnectingNode = sourceConnectingNodeList[-1]  # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and source node)
+        else:
+            sourceConnectingNode = None
+        if len(destinationConnectingNodeList) > 0:
+            destinationConnectingNode = destinationConnectingNodeList[-1] # The last node in the list is the one that connects to the routed network (all prior nodes are intermediate between connecting node and destination node)
+        else:
+            destinationConnectingNode = None
         sourceNode, destinationNode = endpointTuple
-        routeFound = False
+        candidate_pairs_list = []
+        if sourceConnectingNode is not None:
+            candidate_pairs_list.append((sourceConnectingNode, destinationNode))
+        if destinationConnectingNode is not None:
+            candidate_pairs_list.append((sourceNode, destinationConnectingNode))
+        if sourceConnectingNode is not None and destinationConnectingNode is not None:
+            candidate_pairs_list.append((sourceConnectingNode, destinationConnectingNode))
+        best_route = None
+        best_route_len = float("inf") # Initialize to infinity so that any route found will be shorter
         with open(routingFile) as f:
             for line in f: # First check whether an entry in the file is a direct route
                 line = line.strip() # Remove leading/trailing whitespace
@@ -202,30 +216,38 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
                 routeSourcenode = lineElements[0]
                 routeDestnode = lineElements[-1]
                 if (routeSourcenode == sourceNode and routeDestnode == destinationNode) or (routeDestnode == sourceNode and routeSourcenode == destinationNode): # Route between source and destination nodes explicitly included in routing file
-                    routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
-                    routeFound = True
+                    best_route = lineElements # Store the route for this interval
                     break
-            if not routeFound: # If direct route between source/dest nodes not in routing file, look for route between connecting nodes (ground stations not included in routing file)
-                for line in f:
-                    line = line.strip() # Remove leading/trailing whitespace
-                    line = line.replace(' ', '') # Remove spaces (if any)
-                    commaCount = line.count(',')
-                    if commaCount == 0: # Ignore header line
-                        continue
-                    lineElements = line.split(',')
-                    routeSourcenode = lineElements[0]
-                    routeDestnode = lineElements[-1]
-                    if (routeSourcenode == sourceConnectingNode and routeDestnode == destinationConnectingNode) or (routeSourcenode == destinationConnectingNode and routeDestnode == sourceConnectingNode): # Found the route between the source and destination nodes (or vice versa)
-                        routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
-                        if len(sourceConnectingNodeList) > 1:
-                            routeByIntervalDict[epochIntervalNum].extend(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
-                        if len(destinationConnectingNodeList) > 1:
-                            routeByIntervalDict[epochIntervalNum].extend(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
-                        routeFound = True
-                        break
-        if not routeFound:
+                # If not a direct route, check if it is a candidate pair
+                for candidate_pair in candidate_pairs_list:
+                    if (routeSourcenode == candidate_pair[0] and routeDestnode == candidate_pair[1]) or (routeSourcenode == candidate_pair[1] and routeDestnode == candidate_pair[0]):
+                        if len(lineElements) < best_route_len:
+                            best_route = lineElements
+                            best_route_len = len(lineElements)
+            #if not routeFound: # If direct route between source/dest nodes not in routing file, look for route between connecting nodes (can be any non-satellite node, depending on Phase 1 configuration, not included in routing file)
+            #    f.seek(0) # Reset file pointer to beginning of file so it can be read from the start again
+            #    for line in f:
+            #        line = line.strip() # Remove leading/trailing whitespace
+            #        line = line.replace(' ', '') # Remove spaces (if any)
+            #        commaCount = line.count(',')
+            #        if commaCount == 0: # Ignore header line
+            #            continue
+            #        lineElements = line.split(',')
+            #        routeSourcenode = lineElements[0]
+            #        routeDestnode = lineElements[-1]
+            #        if (routeSourcenode == sourceConnectingNode and routeDestnode == destinationConnectingNode) or (routeSourcenode == destinationConnectingNode and routeDestnode == sourceConnectingNode): # Found the route between the source and destination nodes (or vice versa)
+            #            routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
+            #            if len(sourceConnectingNodeList) > 1:
+            #                routeByIntervalDict[epochIntervalNum].extend(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
+            #            if len(destinationConnectingNodeList) > 1:
+            #                routeByIntervalDict[epochIntervalNum].extend(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
+            #            routeFound = True
+            #            break
+        #if not routeFound:
+        if not best_route:
             print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find route between {sourceConnectingNode} and {destinationConnectingNode} in routing file {routingFile}{end_color_string}")
             return None
+        routeByIntervalDict[epochIntervalNum] = best_route
         if global_verbose: 
             print(f"{start_color_string}{color_green}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Found route between {sourceConnectingNode} and {destinationConnectingNode} in routing file {routingFile}: {routeByIntervalDict[epochIntervalNum]}{end_color_string}")
     return routeByIntervalDict
