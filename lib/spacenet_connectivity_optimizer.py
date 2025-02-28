@@ -224,26 +224,7 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
                         if len(lineElements) < best_route_len:
                             best_route = lineElements
                             best_route_len = len(lineElements)
-            #if not routeFound: # If direct route between source/dest nodes not in routing file, look for route between connecting nodes (can be any non-satellite node, depending on Phase 1 configuration, not included in routing file)
-            #    f.seek(0) # Reset file pointer to beginning of file so it can be read from the start again
-            #    for line in f:
-            #        line = line.strip() # Remove leading/trailing whitespace
-            #        line = line.replace(' ', '') # Remove spaces (if any)
-            #        commaCount = line.count(',')
-            #        if commaCount == 0: # Ignore header line
-            #            continue
-            #        lineElements = line.split(',')
-            #        routeSourcenode = lineElements[0]
-            #        routeDestnode = lineElements[-1]
-            #        if (routeSourcenode == sourceConnectingNode and routeDestnode == destinationConnectingNode) or (routeSourcenode == destinationConnectingNode and routeDestnode == sourceConnectingNode): # Found the route between the source and destination nodes (or vice versa)
-            #            routeByIntervalDict[epochIntervalNum] = lineElements # Store the route for this interval
-            #            if len(sourceConnectingNodeList) > 1:
-            #                routeByIntervalDict[epochIntervalNum].extend(sourceConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the source node
-            #            if len(destinationConnectingNodeList) > 1:
-            #                routeByIntervalDict[epochIntervalNum].extend(destinationConnectingNodeList[:-1]) # Add the intermediate nodes between the connecting node and the destination node
-            #            routeFound = True
-            #            break
-        #if not routeFound:
+
         if not best_route:
             print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find route between {sourceConnectingNode} and {destinationConnectingNode} in routing file {routingFile}{end_color_string}")
             return None
