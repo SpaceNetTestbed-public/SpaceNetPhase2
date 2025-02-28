@@ -67,16 +67,17 @@ class AppManager:
                 self.app_dest_devName = str(self.app_dest_devName)
                 print(f"(spacenet_app_manager:AppManager:select_app) Running {self.app_selection} from nodes {self.app_source_devName} to {self.app_dest_devName}.")
                 print(f"(spacenet_app_manager:AppManager:select_app) Output path: {self.output_path}; Delete app results: {self.del_app_results}; Verbose: {self.verbose}")
-                if self.app_selection == "Ping":
-                    # Check if Ping should pause during interval changes
+                if self.app_selection == "Ping" or self.app_selection == "Iperf":
+                    # Check if Ping/iPerf should pause during interval changes
                     pause_at_interval_change = False
                     if ("PauseAtIntervalChange" in appOptionsDict):
                         print(f'AppOptionsDict[PauseAtIntervalChange]: {appOptionsDict["PauseAtIntervalChange"]} (type: {type(appOptionsDict["PauseAtIntervalChange"])})')
                         if (appOptionsDict["PauseAtIntervalChange"] == True):
                             pause_at_interval_change = True
-                    self.app_object = pingApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.appRunTime, self.intervalRunTime, self.output_path, self.del_app_results, pause_at_interval_change=pause_at_interval_change, verbose=self.verbose)
-                elif self.app_selection == "Iperf":
-                    self.app_object = iperfApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.appRunTime, self.intervalRunTime, self.output_path, self.del_app_results, self.verbose)
+                    if self.app_selection == "Ping":
+                        self.app_object = pingApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.appRunTime, self.intervalRunTime, self.output_path, self.del_app_results, pause_at_interval_change=pause_at_interval_change, verbose=self.verbose)
+                    elif self.app_selection == "Iperf":
+                        self.app_object = iperfApp(self.device_dictionary, self.app_source_devName, self.app_dest_devName, self.appRunTime, self.intervalRunTime, self.output_path, self.del_app_results, pause_at_interval_change=pause_at_interval_change, verbose=self.verbose)
             elif self.app_selection == "CLI":
                 self.CLI_start_interval = appOptionsDict["CLIStartInterval"]
                 self.CLI_interval_count = appOptionsDict["CLIIntervalCount"]
@@ -207,7 +208,7 @@ class AppManager:
         self.app_object.print_to_output_file(output_text)
 
 class pingApp:
-    def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, intervalRunTime, output_path, del_app_results, pause_at_interval_change = False, verbose = False):
+    def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, intervalRunTime, output_path, del_app_results=False, pause_at_interval_change = False, verbose = False):
         self.devDict = devDict
         self.app_source_devName = app_source_devName
         self.app_dest_devName = app_dest_devName
@@ -235,9 +236,8 @@ class pingApp:
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         # Delete the output file if it already exists
-        import os
         if os.path.exists(f"{self.output_path}{self.output_filename}"):
-            print(f"(spacenet_app_manager.startPing) Deleting existing output file {self.output_path}{self.output_filename}")
+            print(f"(spacenet_app_manager:pingApp:init) Deleting existing output file {self.output_path}{self.output_filename}")
             os.remove(f"{self.output_path}{self.output_filename}")
 
     def start(self, current_interval = None):
@@ -319,13 +319,15 @@ class pingApp:
                 print(f"(spacenet_app_manager.print_to_output_file) Printed {output_text} to {output_path_and_filename}")
 
 class iperfApp:
-    def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, output_path, del_app_results, verbose = False):
+    def __init__(self, devDict, app_source_devName, app_dest_devName, ApplicationRunTime, intervalRunTime, output_path, del_app_results=False, pause_at_interval_change=False, verbose = False):
         self.devDict = devDict
         self.app_source_devName = app_source_devName
         self.app_dest_devName = app_dest_devName
         self.app_run_time = ApplicationRunTime
+        self.interval_run_time = intervalRunTime
         self.output_path = output_path
         self.del_app_results = del_app_results
+        self.pause_at_interval_change = pause_at_interval_change
         self.verbose = verbose
 
         self.app_source_object = None
@@ -337,16 +339,37 @@ class iperfApp:
         self.app_sleeps = True
         self.running = False
 
+        print(f"(spacenet_app_manager) iPerfApp configuration: Source device: {self.app_source_devName}, Destination device: {self.app_dest_devName}, App Runtime: {self.app_run_time}, Interval Runtime: {self.interval_run_time}, Output Path: {self.output_path}, Delete app results: {self.del_app_results}, Pause at interval change: {self.pause_at_interval_change}, Verbose output: {self.verbose}")
+
         # Initialization tasks:
+        print(f"(spacenet_app_manager:iperfApp:init) Pausing at interval change: {self.pause_at_interval_change}")
+
         # If output path directory doesn't exist, create it
         import os
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
+        # Delete the output file if it already exists
+        if os.path.exists(f"{self.output_path}{self.server_output_filename}"):
+            print(f"(spacenet_app_manager:iperfApp:init) Deleting existing output file {self.output_path}{self.server_output_filename}")
+            try:
+                os.remove(f"{self.output_path}{self.server_output_filename}")
+            except FileNotFoundError:
+                print(f"(spacenet_app_manager:iperfApp:init) Unable to delete file")
+        if os.path.exists(f"{self.output_path}{self.client_output_filename}"):
+            print(f"(spacenet_app_manager:iperfApp:init) Deleting existing output file {self.output_path}{self.client_output_filename}")
+            try:
+                os.remove(f"{self.output_path}{self.server_output_filename}")
+            except FileNotFoundError:
+                print(f"(spacenet_app_manager:iperfApp:init) Unable to delete file")
 
     def start(self, current_interval = None):
         if self.running:
             return
-        self.running = True
+        if not self.pause_at_interval_change:
+            self.running = True # If running for duration of sim, prevent it from being re-run at each time interval
+            appRunTime = self.app_run_time
+        else:
+            appRunTime = self.interval_run_time
         # Now that the device dictionary should be populated, get the source and destination devices and IPs
         self.app_source_object, self.app_source_ip, _ = self.devDict[self.app_source_devName]
         self.app_source_ip = self.app_source_ip.split('/')[0]
@@ -355,8 +378,8 @@ class iperfApp:
 
         if self.verbose:
             print("*** Running Iperf\n")
-        if self.verbose:
             print("Iperf from ", self.app_source_ip, " to ", self.app_dest_ip)
+            print(f"Pausing at interval change: {self.pause_at_interval_change}")
         cmdString = f"iperf -s -p 5201 > {self.output_path}{self.server_output_filename} &"
         if self.verbose:
             print(f"{self.app_dest_devName}: {cmdString}")
@@ -365,6 +388,8 @@ class iperfApp:
         if self.verbose:
             print(f"{self.app_source_devName}: {cmdString}")
         self.app_source_object.cmd(cmdString)
+        if self.verbose:
+            print(f"(spacenet_app_manager:iperfApp:start) iPerf started in background", flush=True)
 
     def stop(self):
         if self.verbose:
@@ -377,6 +402,7 @@ class iperfApp:
         retVal = self.app_dest_object.cmd(f"cat {self.output_path}{self.server_output_filename}")
         print('iPerf server results:\n', retVal)
         if self.del_app_results:
+            print("Deleting output result files")
             self.app_source_object.cmd(f"rm {self.output_path}{self.client_output_filename} -f")
             self.app_dest_object.cmd(f"rm {self.output_path}{self.server_output_filename} -f")
         self.running = False
@@ -385,9 +411,12 @@ class iperfApp:
         pass
 
     def update_app_run_time(self, appRunTime):
-        self.app_run_time = appRunTime
+        if not self.pause_at_interval_change:
+            self.app_run_time = appRunTime
 
     def get_app_run_time(self):
+        if self.pause_at_interval_change:
+            return self.get_interval_run_time()
         return self.app_run_time
 
     def update_interval_run_time(self, intervalRunTime):
@@ -418,7 +447,10 @@ class iperfApp:
             self.app_dest_object.cmd(dest_cmdString)
             self.app_source_object.cmd(source_cmdString)
             if self.verbose:
-                print(f"(spacenet_app_manager.print_to_output_file) Printed {output_text} to {server_output_file_and_path and {client_output_file_and_path}}")
+                print(f"(spacenet_app_manager.print_to_output_file) Printed {output_text} to {server_output_file_and_path} and {client_output_file_and_path}")
+        else:
+            print(f"(spacenet_app_manager:iperfApp:print_to_output_file) Unable to print {output_text} to files {server_output_file_and_path} and {client_output_file_and_path}")        
+
 class CLIApp:
     def __init__(self, net, starting_interval, CLI_count, verbose = False):
         self.net = net

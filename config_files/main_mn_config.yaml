@@ -1,22 +1,22 @@
 # Main configuration script for the SpaceNet Mininet Simulator
 # ~~~ Main Settings ~~~
-ConstellationName: starlink2000_10_10 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
+ConstellationName: starlink1584_15_33 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
 OutputFilePath: script_output/runtime_test/
 DeleteAppResults: False
 Verbose: True
 Optimize: True
 MonitorResource: False
-SimTimeMode: continuous
+SimTimeMode: discrete
 # Technical configurations for link parameters
 PrePing: True # Will have all devices ping neighbors before starting the app
 R2Q: 1 # Rate to quantum ratio for the network links (default is 10). Lower values increase frequency of packet bursts - benefits high latency networks
 DynamicLinkQueueSize: True # Allow custom netem packet queue sizes for links based on bandwidth-delay product (default is 1000). Higher values increase the number of packets that can be buffered, but increases memory usage
 # ~~~ App configurations ~~~
-AppName: Ping # Options- Ping, iPerf, CLI
+AppName: iPerf # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
-SourceDeviceName: firstGS #, 501, 1001, 2001  #Orlando
-DestDeviceName: lastGS #, 500, 1000, 2000  #Delhi
+SourceDeviceName: 1584 #, 501, 1001, 2001  #Orlando
+DestDeviceName: 1585 #, 500, 1000, 2000  #Delhi
 PauseAtIntervalChange: True # Will pause app while network links and routes are updated, then resume
 # For CLI
 CLIStartInterval: 0
