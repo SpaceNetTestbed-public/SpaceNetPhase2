@@ -1,7 +1,7 @@
 # Main configuration script for the SpaceNet Mininet Simulator
 # ~~~ Main Settings ~~~
 ConstellationName: starlink1584_10_12 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
-OutputFilePath: script_output/Scitech/
+OutputFilePath: script_output/multi-shell/
 DeleteAppResults: False
 Verbose: True
 Optimize: True
@@ -10,8 +10,8 @@ MonitorResource: False
 AppName: Ping # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
-SourceDeviceName: 1586 #1609 # 101, 501, 1001, 2001  #Orlando
-DestDeviceName: 1585 #1585 # 100, 500, 1000, 2000  #Delhi
+SourceDeviceName: 1814 #1609 # 101, 501, 1001, 2001  #Tokyo
+DestDeviceName: 1840 #1585 # 100, 500, 1000, 2000  #McMurdo station
 PauseAtIntervalChange: True # Will pause app while network links and routes are updated, then resume
 # For CLI
 CLIStartInterval: 0
