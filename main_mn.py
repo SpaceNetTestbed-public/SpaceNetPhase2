@@ -309,6 +309,7 @@ def find_file_in_directory_with_dtg(directory, prefix, suffix, target_datetime):
 
 def parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList = None):
     # Parse the connectivity file and return the connectivity matrix as a list of lists
+
     LinkDict = {}
     with open(ConnectivityFileName, 'r') as file:
         for line in file:
@@ -490,9 +491,8 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
                 break
         if satName == None:
             print("Error: Could not find satellite connected to ground station ", gsName)
-            continue
-        if satName not in route:
-            continue
+            input("Press Enter to continue...")
+            return IntervalRoutesDict
         devList = list(IntervalRoutesDict.keys())
         try: 
             devList.remove(satName) # Remove the satellite from the list of devices
