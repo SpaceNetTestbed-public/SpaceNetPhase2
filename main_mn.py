@@ -70,9 +70,9 @@ starting_interval = 0
 CLI_count = 1
 current_second = 0
 
-EpochIntervalCounter = 0
-EpochIntervalDuration = 0
-EpochIntervalCount = None
+TimeStepCounter = 0
+TimeStepDuration = 0
+TimeStepCount = None
 
 # =============== Link Variables ==================
 r2q = 10 # Default value for r2q parameter in tc commands
@@ -389,27 +389,27 @@ def get_epoch_info():
     # 6. Epoch start hour (24 hour format)
     # 7. Epoch start minute
     # 8. Epoch start second
-    # Returns: EpochDuration, EpochInterval, EpochStartDateTime (as Python datetime object)
+    # Returns: EpochDuration, EpochInterval, StartDateTime (as Python datetime object)
     defaultEpochDuration = "1"
     defaultEpochInterval = "10"
-    defaultEpochStartYear = "2023"
-    defaultEpochStartMonth = "09"
-    defaultEpochStartDay = "13"
-    defaultEpochStartHour = "07"
-    defaultEpochStartMinute = "45"
-    defaultEpochStartSecond = "50"
+    defaultStartYear = "2023"
+    defaultStartMonth = "09"
+    defaultStartDay = "13"
+    defaultStartHour = "07"
+    defaultStartMinute = "45"
+    defaultStartSecond = "50"
 
     EpochDuration = int(input("Enter epoch duration (in seconds) [{}]: ".format(defaultEpochDuration)) or (defaultEpochDuration))
-    EpochIntervalCount = int(input("Enter epoch count [{}]: ".format(defaultEpochInterval)) or (defaultEpochInterval))
-    EpochStartYear = int(input("Enter epoch start year [{}]: ".format(defaultEpochStartYear)) or (defaultEpochStartYear))
-    EpochStartMonth = int(input("Enter epoch start month [{}]: ".format(defaultEpochStartMonth)) or (defaultEpochStartMonth))
-    EpochStartDay = int(input("Enter epoch start day [{}]: ".format(defaultEpochStartDay)) or (defaultEpochStartDay))
-    EpochStartHour = int(input("Enter epoch start hour (24 hour format) [{}]: ".format(defaultEpochStartHour)) or (defaultEpochStartHour))
-    EpochStartMinute = int(input("Enter epoch start minute [{}]: ".format(defaultEpochStartMinute)) or (defaultEpochStartMinute))
-    EpochStartSecond = int(input("Enter epoch start second [{}]: ".format(defaultEpochStartSecond)) or (defaultEpochStartSecond))
+    TimeStepCount = int(input("Enter epoch count [{}]: ".format(defaultEpochInterval)) or (defaultEpochInterval))
+    StartYear = int(input("Enter epoch start year [{}]: ".format(defaultStartYear)) or (defaultStartYear))
+    StartMonth = int(input("Enter epoch start month [{}]: ".format(defaultStartMonth)) or (defaultStartMonth))
+    StartDay = int(input("Enter epoch start day [{}]: ".format(defaultStartDay)) or (defaultStartDay))
+    StartHour = int(input("Enter epoch start hour (24 hour format) [{}]: ".format(defaultStartHour)) or (defaultStartHour))
+    StartMinute = int(input("Enter epoch start minute [{}]: ".format(defaultStartMinute)) or (defaultStartMinute))
+    StartSecond = int(input("Enter epoch start second [{}]: ".format(defaultStartSecond)) or (defaultStartSecond))
     
 
-    return EpochDuration, EpochIntervalCount, datetime.datetime(EpochStartYear, EpochStartMonth, EpochStartDay, EpochStartHour, EpochStartMinute, EpochStartSecond)
+    return EpochDuration, TimeStepCount, datetime.datetime(StartYear, StartMonth, StartDay, StartHour, StartMinute, StartSecond)
 
 def get_config_info():
     sim_config = {}
@@ -431,7 +431,7 @@ def get_config_info():
         constellation_config["RoutingFilePath"] = routing_file_path + "onefib/"
     constellation_config["TotalSatCnt"], constellation_config["TotalGSCnt"] = get_constellation_info()
 
-    constellation_config["EpochIntervalDuration"], constellation_config["EpochIntervalCount"], constellation_config["EpochStartDateTime"] = get_epoch_info()
+    constellation_config["SimLength"]["TimeStepDuration"], constellation_config["SimLength"]["TimeStepCount"], constellation_config["StartDateTime"] = get_epoch_info()
     
     return sim_config, constellation_config, None
 
@@ -489,13 +489,13 @@ def parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList = None):
     
     return LinkDict
 
-def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, nodeList = None):
+def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart, TimeStepCount, TimeStepDuration, TotalSatCnt, nodeList = None):
     # Parse all connectivity files in the specified path
     # Returns a dictionary with epoch number as key and connectivity matrix as value
     ConnectivityDict = {}
 
     curEpochDateTime = EpochStart
-    for _ in range(0, EpochIntervalCount):
+    for _ in range(0, TimeStepCount):
         CurrEpochString = curEpochDateTime.strftime("%Y_%m_%d_%H_%M_%S")
         ConnectivityFileName = find_file_in_directory_with_dtg(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, curEpochDateTime)
         if ConnectivityFileName is None:
@@ -503,7 +503,7 @@ def parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix,
             exit (1)
         print("Processing file: ", ConnectivityFileName)
         ConnectivityDict[CurrEpochString] = parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList)
-        curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
+        curEpochDateTime += datetime.timedelta(seconds=TimeStepDuration)
 
     return ConnectivityDict
 
@@ -680,13 +680,13 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
     
     return IntervalRoutesDict
 
-def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict = None):
+def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart, TimeStepCount, TimeStepDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict = None):
     # Parse all routing files in the specified path
     # Returns a dictionary with epoch number as key and routing information as value
     RoutingDict = {}
 
     curEpochDateTime = EpochStart
-    for i in range(0, EpochIntervalCount):
+    for i in range(0, TimeStepCount):
         CurrEpochString = curEpochDateTime.strftime("%Y_%m_%d_%H_%M_%S")
         RoutingFileName = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, curEpochDateTime)
         if RoutingFileName is None:
@@ -701,7 +701,7 @@ def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffi
             RoutingDict[CurrEpochString] = parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEpochString, route)
         else:
             RoutingDict[CurrEpochString] = parse_interval_routing_file_no_implied_routes(RoutingFileName, route)
-        curEpochDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
+        curEpochDateTime += datetime.timedelta(seconds=TimeStepDuration)
         print(curEpochDateTime)
     return RoutingDict
 
@@ -842,11 +842,11 @@ def attempt_scenario_update(): # Tries to perform scenario update when called by
     with update_lock:
         update_in_progress = False
 
-def interval_update_timing_thread(epochIntervalDuration, epochIntervalCount): # Attempts to perform updates at specific wall-clock times if using continuous time mode
+def interval_update_timing_thread(TimeStepDuration, TimeStepCount): # Attempts to perform updates at specific wall-clock times if using continuous time mode
     start_time = time.monotonic()
 
     # Precompute all scheduled update times
-    update_times = [(i+1) * epochIntervalDuration for i in range(epochIntervalCount-1)] # Update at the end of each interval, so skip the first interval
+    update_times = [(i+1) * TimeStepDuration for i in range(TimeStepCount-1)] # Update at the end of each interval, so skip the first interval
     print(f"[{current_second}] (interval_update_timing_thread) Performing interval updates at times: {update_times} seconds.")
 
     i = 0 # index for update_times
@@ -884,16 +884,16 @@ def interval_update_timing_thread(epochIntervalDuration, epochIntervalCount): # 
 # ================== Logic for all updates that occur during interval changes ==================
 # 
 def update_interval():
-    global EpochIntervalDuration, EpochIntervalCounter, EpochIntervalCount, EpochCurrentDateTime, continuousTimeTotal
+    global TimeStepDuration, TimeStepCounter, TimeStepCount, EpochCurrentDateTime, continuousTimeTotal
     global current_second, global_verbose, simTimeMode
     global appManager, net
     global nodeIndexDict, devDict, AllLinksDict, fullRoutingDict
-    print(f"[{current_second}] (update_interval)  Updating to Interval Number {EpochIntervalCounter}")
-    appManager.print_to_output_file(f"[{current_second}] Change to Interval Number {EpochIntervalCounter}")
+    print(f"[{current_second}] (update_interval)  Updating to Interval Number {TimeStepCounter}")
+    appManager.print_to_output_file(f"[{current_second}] Change to Interval Number {TimeStepCounter}")
     # Update epoch time to next interval
     EpochPreviousDateTime = EpochCurrentDateTime
     PrevEpochString = EpochPreviousDateTime.strftime("%Y_%m_%d_%H_%M_%S")
-    EpochCurrentDateTime += datetime.timedelta(seconds=EpochIntervalDuration)
+    EpochCurrentDateTime += datetime.timedelta(seconds=TimeStepDuration)
     CurrEpochString = EpochCurrentDateTime.strftime("%Y_%m_%d_%H_%M_%S")
     info("[" + str(current_second) + "] (update_interval) ~Setting conditions at epoch " + CurrEpochString + "~\n")
 
@@ -1142,16 +1142,16 @@ def update_interval():
     """
 
     if use_app_manager:
-        appManager.rerun_app(EpochIntervalCounter) # Rerun app if needed (ie, CLI app)
+        appManager.rerun_app(TimeStepCounter) # Rerun app if needed (ie, CLI app)
 
     # End of loop
-    EpochIntervalCounter += 1 
+    TimeStepCounter += 1 
     if simTimeMode == "continuous":
-        print(f"[{current_second}] (update_interval)  ~~~Interval update complete ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+        print(f"[{current_second}] (update_interval)  ~~~Interval update complete ({TimeStepCounter}/{TimeStepCount})~~~")
     else: # Discrete time mode (default)
         if use_app_manager and appManager.app_sleeps(): # Interval duration skipped for CLI app
-            sleepTime = EpochIntervalDuration+10
-            print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+            sleepTime = TimeStepDuration+10
+            print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({TimeStepCounter}/{TimeStepCount})~~~")
             time.sleep(sleepTime)
 # End of update_interval function
 
@@ -1173,7 +1173,7 @@ def main():
     global devDict, CurrRoutingDict, PrevRoutingDict
     global AllLinksDict, IntervalLinksDict, fullRoutingDict
     global thread_list
-    global EpochIntervalCounter, EpochIntervalCount, EpochIntervalDuration, EpochCurrentDateTime
+    global TimeStepCounter, TimeStepCount, TimeStepDuration, EpochCurrentDateTime
     global appManager
     global net
     global nodeIndexDict
@@ -1187,7 +1187,7 @@ def main():
             return
         global del_app_results, output_path, global_verbose
         del_app_results = bool(sim_config["DeleteAppResults"])
-        output_path = sim_config["OutputFilePath"]
+        output_path = sim_config["ResultsFilePath"]
         global_verbose = bool(sim_config["Verbose"])
     else:
         sim_config, constellation_config = get_config_info()
@@ -1205,16 +1205,16 @@ def main():
     pre_ping = sim_config["PrePing"] if "PrePing" in sim_config else pre_ping # use default value if not in config file 
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
     TotalGSCnt = int(constellation_config["TotalGSCnt"])
-    ConnectivityMatrixPath = constellation_config["ConnectivityMatrixPath"]
-    RoutingFilePath = constellation_config["RoutingFilePath"]
-    EpochIntervalDuration = int(constellation_config["EpochIntervalDuration"])
-    EpochIntervalCount = int(constellation_config["EpochIntervalCount"])
-    EpochStartDateTime = constellation_config["EpochStartDateTime"]
-    EpochCurrentDateTime = EpochStartDateTime
-    EpochIntervalCounter = 0
+    ConnectivityMatrixPath = constellation_config["Phase1FilePath"]+"connectivity_matrix/starlink/"
+    RoutingFilePath = constellation_config["Phase1FilePath"]+"routing/starlink/"
+    TimeStepDuration = int(constellation_config["SimLength"]["TimeStepDuration"])
+    TimeStepCount = int(constellation_config["SimLength"]["TimeStepCount"])
+    StartDateTime = constellation_config["StartDateTime"]
+    EpochCurrentDateTime = StartDateTime
+    TimeStepCounter = 0
     if simTimeMode == "continuous":
         global stop_event, update_lock, continuousTimeTotal
-        continuousTimeTotal = EpochIntervalDuration * EpochIntervalCount
+        continuousTimeTotal = TimeStepDuration * TimeStepCount
         stop_event = threading.Event()
         update_lock = threading.Lock()
     print("Config values:")
@@ -1223,9 +1223,9 @@ def main():
     print("  Total ground stations: ", TotalGSCnt)
     print("  Connectivity Matrix Path: ", ConnectivityMatrixPath)
     print("  Routing File Path: ", RoutingFilePath)
-    print("  Epoch Interval Duration: ", EpochIntervalDuration)
-    print("  Epoch Interval Count: ", EpochIntervalCount)
-    print("  Epoch Start Date/Time: ", EpochStartDateTime)
+    print("  Epoch Interval Duration: ", TimeStepDuration)
+    print("  Epoch Interval Count: ", TimeStepCount)
+    print("  Epoch Start Date/Time: ", StartDateTime)
     print("  Sim Time Mode: ", simTimeMode)
     if simTimeMode == "continuous":
         print("    Continuous Time Total: ", continuousTimeTotal)
@@ -1265,12 +1265,12 @@ def main():
                 appOptionsDict["PauseAtIntervalChange"] = sim_config["PauseAtIntervalChange"]
         else:
             appOptionsDict = None
-        appRunTime = EpochIntervalCount * EpochIntervalDuration # Default application run time
+        appRunTime = TimeStepCount * TimeStepDuration # Default application run time
         appManager = spacenet_app_manager.AppManager(totalSatCnt = TotalSatCnt, 
                                                      totalGSCnt = TotalGSCnt, 
                                                      devDict = devDict, 
                                                      appRunTime = appRunTime, 
-                                                     intervalRunTime= EpochIntervalDuration, 
+                                                     intervalRunTime= TimeStepDuration, 
                                                      outputPath = output_path, 
                                                      delAppResults = del_app_results, 
                                                      net = net, 
@@ -1294,13 +1294,9 @@ def main():
             source_devName = str(source_devName)
         if type(dest_devName) is not str:
             dest_devName = str(dest_devName)
-        if 'NodeIndexFilePath' in constellation_config:
-            nodeIndexFilePath = constellation_config['NodeIndexFilePath']
-            nodeIndexDict = spacenet_connectivity_optimizer.load_node_index_dict(nodeIndexFilePath)
-        if 'NodeIndexFilePath' not in constellation_config or nodeIndexDict == None:
-            print("Error: Could not load node index file. Check constellation configuration file for 'NodeIndexFilePath'. Exiting...")
-            exit(-1)
-        minimalNodeList, routeByIntervalDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration), (source_devName, dest_devName), nodeIndexDict)
+        nodeIndexFilePath = constellation_config["Phase1FilePath"]+"node_indices/starlink/"
+        nodeIndexDict = spacenet_connectivity_optimizer.load_node_index_dict(nodeIndexFilePath)
+        minimalNodeList, routeByIntervalDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (StartDateTime, TimeStepCount, TimeStepDuration), (source_devName, dest_devName), nodeIndexDict)
         if global_verbose:
             print("Minimal node list: ", minimalNodeList)
         if minimalNodeList == None:
@@ -1344,7 +1340,7 @@ def main():
     # AllLinksDict will contain all link statuses at every epoch
     # link_tracker will contain all links that have been created in the topology
     # We create all links before starting the network, then dynamically bring links up/down as needed
-    AllLinksDict = parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, minimalNodeList) # Returns dictionary of format {epochString: {linkName: (linkDelay, linkBandwidth)}}    
+    AllLinksDict = parse_all_connectivity_files(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, StartDateTime, TimeStepCount, TimeStepDuration, TotalSatCnt, minimalNodeList) # Returns dictionary of format {epochString: {linkName: (linkDelay, linkBandwidth)}}    
     # Create links
     info("*** Creating links\n")
     link_tracker = []
@@ -1382,7 +1378,7 @@ def main():
     print(devDict) 
     # Compile Routes
     info("\n*** Compiling routes from files\n")
-    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStartDateTime, EpochIntervalCount, EpochIntervalDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
+    fullRoutingDict = parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, StartDateTime, TimeStepCount, TimeStepDuration, TotalSatCnt, TotalGSCnt, routeByIntervalDict) # Returns dictionary of format {epochString: {deviceName: {targetNetworkIP: (nextHopIP, nextHopIntfName)}}}
 
     # Create management network
     if use_management_net_messaging:
@@ -1620,7 +1616,7 @@ def main():
     # If running simulation in continuous mode, start the update timing thread
     if simTimeMode == "continuous":
         print(f"[{current_second}] Starting continuous time mode update timing thread")
-        update_timing_thread = threading.Thread(target=interval_update_timing_thread, args=(EpochIntervalDuration, EpochIntervalCount))
+        update_timing_thread = threading.Thread(target=interval_update_timing_thread, args=(TimeStepDuration, TimeStepCount))
         update_timing_thread.daemon = True
         update_timing_thread.start()
         thread_list.append(update_timing_thread)
@@ -1628,14 +1624,14 @@ def main():
     # =================================================================
     if use_app_manager:
         # Application start
-        #ApplicationRunTime = (EpochIntervalCount * EpochIntervalDuration)# - 5 # 5 second buffer
+        #ApplicationRunTime = (TimeStepCount * TimeStepDuration)# - 5 # 5 second buffer
         print(f"[{current_second}] Starting application and running for {appManager.get_app_run_time()} seconds")
         #appManager.update_app_run_time(ApplicationRunTime)
-        appManager.start_app(EpochIntervalCounter)
+        appManager.start_app(TimeStepCounter)
         t0_app = time.perf_counter_ns()
 
     # =================================================================
-    EpochIntervalCounter += 1
+    TimeStepCounter += 1
     if global_verbose:
         print(f"[{current_second}] Simulating {len(devDict)} nodes")
     
@@ -1652,12 +1648,12 @@ def main():
                 break
     else: # Discrete mode (default)
         if appManager.app_sleeps(): # Does the app put the control script to sleep for interval duration? (Interval duration skipped for CLI app)
-            sleepTime = EpochIntervalDuration+10
-            print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({EpochIntervalCounter}/{EpochIntervalCount})~~~")
+            sleepTime = TimeStepDuration+10
+            print(f"[{current_second}] ~~~Sleeping for {sleepTime} seconds ({TimeStepCounter}/{TimeStepCount})~~~")
             time.sleep(sleepTime) # Wait initial interval duration before starting main program loop
 
         # Start of Loop
-        while (EpochIntervalCounter < EpochIntervalCount):
+        while (TimeStepCounter < TimeStepCount):
             update_interval()
     
     # Application stop

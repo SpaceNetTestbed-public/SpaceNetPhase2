@@ -250,7 +250,7 @@ def plot_network_utility_results(
     main_config_file = yaml.safe_load(open(main_config, 'r'))
 
     # Determine the timestep of simulation
-    ts = np.float64(sat_config_file['EpochIntervalDuration'])
+    ts = np.float64(sat_config_file['TimeStepDuration'])
 
     # Plot the data
     if test_type == "iperf":
@@ -271,7 +271,7 @@ def plot_network_utility_results(
         plt.grid(visible=True, which='major', axis='both', color='k', linestyle='-', linewidth=0.5)
 
         # Plot title
-        plt.title("IPerf3 Test: " + "gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + " - gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt']) + " Sim Length: " + str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount']) + "s")
+        plt.title("IPerf3 Test: " + "gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + " - gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt']) + " Sim Length: " + str(sat_config_file['TimeStepDuration'] * sat_config_file['TimeStepCount']) + "s")
 
         # Axis labels
         plt.xlabel('Time (s)')
@@ -299,7 +299,7 @@ def plot_network_utility_results(
         plt.grid(visible=True, which='major', axis='both', color='k', linestyle='-', linewidth=0.5)
         
         # Plot title
-        plt.title("Ping Test: " + "gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + " - gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt']) + " Sim Length: " + str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount']) + "s")
+        plt.title("Ping Test: " + "gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + " - gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt']) + " Sim Length: " + str(sat_config_file['TimeStepDuration'] * sat_config_file['TimeStepCount']) + "s")
 
         # Axis labels
         plt.xlabel('ICMP Sequence Number')
@@ -309,7 +309,7 @@ def plot_network_utility_results(
         plt.xlim(0, seq_array[-1])
 
         # Save plot as a .png
-        plt.savefig(output_dir+"plots/" + test_type+"_gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + "_gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt'])+'_'+str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount'])+'.png')
+        plt.savefig(output_dir+"plots/" + test_type+"_gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + "_gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt'])+'_'+str(sat_config_file['TimeStepDuration'] * sat_config_file['TimeStepCount'])+'.png')
     
 
 # ----------------------------------------------------- #
@@ -354,7 +354,7 @@ def write_to_csv(path_to_text_file,
         raise ValueError("Arrays must have the same length")
     
     # Define filename and directory
-    filename = output_dir+"csv/"+test_type+"_gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + "_gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt'])+'_'+str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount'])+'.csv'
+    filename = output_dir+"csv/"+test_type+"_gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + "_gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt'])+'_'+str(sat_config_file['TimeStepDuration'] * sat_config_file['TimeStepCount'])+'.csv'
 
     # Open the file in write mode
     with open(filename, mode='w', newline='') as file:

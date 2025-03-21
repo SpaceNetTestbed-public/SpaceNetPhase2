@@ -1,7 +1,7 @@
 # Main configuration script for the SpaceNet Mininet Simulator
 # ~~~ Main Settings ~~~
 ConstellationName: starlink1584_10_12 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
-OutputFilePath: script_output/multi-shell/
+ResultsFilePath: script_output/multi-shell/
 DeleteAppResults: False
 Verbose: True
 Optimize: True

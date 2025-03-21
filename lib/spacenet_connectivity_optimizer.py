@@ -69,7 +69,7 @@ def parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTupl
     if global_verbose:
         print(f"(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) connectivityFileTuple: {connectivityFileTuple}, epoch details: {epochTuple}, endpoint details: {endpointTuple}")
     ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix = connectivityFileTuple
-    EpochStart, EpochIntervalCount, EpochIntervalDuration = epochTuple
+    EpochStart, TimeStepCount, TimeStepDuration = epochTuple
     sourceNode, destinationNode = endpointTuple
     nonConnectingNodeTypeList = ['CT']# , 'IE'] # List of node types that are not connected to more than one node at a time (e.g. Customer Terminals) thus may not be in the routing files
     sourceNodeConnectingNodeList = []
@@ -105,16 +105,16 @@ def parse_connectivity_files_for_connected_sats(connectivityFileTuple, epochTupl
     if not sourceRequiresVariableConnection and not destinationRequiresVariableConnection:
         if global_verbose: 
             print(f"{start_color_string}{color_green}(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) Source and Destination nodes are already connected to the network.  No need to parse connectivity files.{end_color_string}")
-        for intervalNum in range(EpochIntervalCount): # set the same connecting nodes for all intervals as sats and gateways are included in routing files
+        for intervalNum in range(TimeStepCount): # set the same connecting nodes for all intervals as sats and gateways are included in routing files
             intervalConnectingNodeDict[intervalNum] = (sourceNodeConnectingNodeList, destinationNodeConnectingNodeList)
         if global_verbose: print(f"(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) Interval Connecting Node Dictionary: {intervalConnectingNodeDict}")
         return intervalConnectingNodeDict
 
     # If source or destination nodes are not sats or gateways, parse all connectivity files to identify all nodes connected to source and destination nodes
-    for intervalNum in range(EpochIntervalCount):
-        connectivityFile = find_file_in_directory_with_dtg(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart + datetime.timedelta(seconds=(intervalNum * EpochIntervalDuration)))
+    for intervalNum in range(TimeStepCount):
+        connectivityFile = find_file_in_directory_with_dtg(ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix, EpochStart + datetime.timedelta(seconds=(intervalNum * TimeStepDuration)))
         if connectivityFile is None:
-            print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) ERROR: Could not find connectivity file for epoch {intervalNum} at {EpochStart + datetime.timedelta(seconds=(intervalNum * EpochIntervalDuration))}{end_color_string}")
+            print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_connectivity_files_for_connected_sats) ERROR: Could not find connectivity file for epoch {intervalNum} at {EpochStart + datetime.timedelta(seconds=(intervalNum * TimeStepDuration))}{end_color_string}")
             return None, None
         # These flags reset for each simulation interval
         foundSourceConnection = False
@@ -171,7 +171,7 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
         #print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, source satellites: {sourceSatList}, destination satellites: {destinationSatList}")
         print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list): {routingFileTuple}, epoch details: {epochTuple}, endpoint connecting nodes by interval: {endpointConnectingNodeByIntervalDict}")
     RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix = routingFileTuple
-    EpochStart, EpochIntervalCount, EpochIntervalDuration = epochTuple
+    EpochStart, TimeStepCount, TimeStepDuration = epochTuple
     # Parse all routing files to identify the minimal set of nodes that need to be connected to route between source and destination
     #minimalNodeList = sourceSatList + destinationSatList
     #minimalNodeList = []
@@ -184,10 +184,10 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
     #if global_verbose:
     #    print(f"(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Initial Minimal Node List: {minimalNodeList}")
     routeByIntervalDict = {}
-    for epochIntervalNum in range(EpochIntervalCount):
-        routingFile = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart + datetime.timedelta(seconds=(epochIntervalNum * EpochIntervalDuration)))
+    for epochIntervalNum in range(TimeStepCount):
+        routingFile = find_file_in_directory_with_dtg(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix, EpochStart + datetime.timedelta(seconds=(epochIntervalNum * TimeStepDuration)))
         if routingFile is None:
-            print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find routing file for epoch {epochIntervalNum} at {EpochStart + datetime.timedelta(seconds=(epochIntervalNum * EpochIntervalDuration))}{end_color_string}")
+            print(f"{start_color_string}{color_red}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) ERROR: Could not find routing file for epoch {epochIntervalNum} at {EpochStart + datetime.timedelta(seconds=(epochIntervalNum * TimeStepDuration))}{end_color_string}")
             return None
         sourceConnectingNodeList, destinationConnectingNodeList = endpointConnectingNodeByIntervalDict[epochIntervalNum]
         if len(sourceConnectingNodeList) > 0:
@@ -236,12 +236,12 @@ def parse_routing_files_for_minimal_node_list(routingFileTuple, epochTuple, endp
             print(f"{start_color_string}{color_green}(spacenet_connectivity_optimizer:parse_routing_files_for_minimal_node_list) Found route between {sourceConnectingNode} and {destinationConnectingNode} in routing file {routingFile}: {routeByIntervalDict[epochIntervalNum]}{end_color_string}")
     return routeByIntervalDict
 
-# Items needed: source sat for all intervals, destination sat for all intervals, EpochStart, EpochIntervalCount, EpochIntervalDuration
+# Items needed: source sat for all intervals, destination sat for all intervals, EpochStart, TimeStepCount, TimeStepDuration
 # Files needed: All connectivity files, all routing files
 # Receive items as:
 #  connectivity files: tuple: (ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix)
 #  routing files: tuple: (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix)
-#  epoch details: tuple: (EpochStart, EpochIntervalCount, EpochIntervalDuration)
+#  epoch details: tuple: (EpochStart, TimeStepCount, TimeStepDuration)
 #  endpoint details: tuple: (sourceGS, destinationGS)
 # NOTE:  Currently assumes both source and destination are GS nodes - will need to adjust logic if otherwise
 def find_minimal_node_list(connectivityFileTuple, routingFileTuple, epochTuple, endpointTuple, nodeIndexDict):
