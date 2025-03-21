@@ -1294,7 +1294,7 @@ def main():
             source_devName = str(source_devName)
         if type(dest_devName) is not str:
             dest_devName = str(dest_devName)
-        nodeIndexFilePath = constellation_config["Phase1FilePath"]+"node_indices/starlink/"
+        nodeIndexFilePath = constellation_config["Phase1FilePath"]+"node_indices/starlink/nodeindex_"+str(constellation_config["Sim_Date_Time"]["StartYear"])+"_"+str(constellation_config["Sim_Date_Time"]["StartMonth"])+"_"+str(constellation_config["Sim_Date_Time"]["StartDay"])+"_"+str(constellation_config["Sim_Date_Time"]["StartHour"])+"_"+str(constellation_config["Sim_Date_Time"]["StartMinute"])+"_"+str(float(constellation_config["Sim_Date_Time"]["StartSecond"]))
         nodeIndexDict = spacenet_connectivity_optimizer.load_node_index_dict(nodeIndexFilePath)
         minimalNodeList, routeByIntervalDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (StartDateTime, TimeStepCount, TimeStepDuration), (source_devName, dest_devName), nodeIndexDict)
         if global_verbose:

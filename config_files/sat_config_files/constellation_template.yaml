@@ -1,7 +1,7 @@
 # Constellation configuration template for SpaceNet Phase 2
 TotalSatCnt: <sat_count>
 TotalGSCnt: <gs_count>
-Phase1FilePath: /home/spacenet/Desktop/jack_results/aiaa_journal/control_noon/london/
+Phase1FilePath: <phase1_output_file_location>
 SimLength:
     TimeStepDuration: <interval_duration>
     TimeStepCount: <interval_count>
