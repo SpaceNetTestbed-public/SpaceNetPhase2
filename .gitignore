@@ -1,8 +1,7 @@
 script_output/*.*
-script_output/*
-lib/__pycache__/
-resource_monitor/__pycache__/
-config_files/sat_config_files/starlink*
+__pycache__/*
+lib/__pycache__/*
 analysis/analysis_output/*
-__pycache__/
-*.pyc
+config_files/sat_config_files/*
+resource_monitor/__pycache__/*
+script_output/*
