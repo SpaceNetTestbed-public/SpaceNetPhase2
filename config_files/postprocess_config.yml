@@ -1,0 +1,7 @@
+data_file:   /home/spacenet/Desktop/jack_results/aiaa_journal/control_noon/sydney/iperf_client_results.txt
+test_type:   iperf
+input_dir:   
+output_dir:  /home/spacenet/Desktop/jack_results/aiaa_journal/control_noon/sydney/
+threads:     2
+csv:         false
+plot:        false

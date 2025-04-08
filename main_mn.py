@@ -1205,8 +1205,8 @@ def main():
     pre_ping = sim_config["PrePing"] if "PrePing" in sim_config else pre_ping # use default value if not in config file 
     TotalSatCnt = int(constellation_config["TotalSatCnt"])
     TotalGSCnt = int(constellation_config["TotalGSCnt"])
-    ConnectivityMatrixPath = constellation_config["Phase1FilePath"]+"connectivity_matrix/starlink/"
-    RoutingFilePath = constellation_config["Phase1FilePath"]+"routing/starlink/"
+    ConnectivityMatrixPath = sim_config["Phase1FilePath"]+"connectivity/starlink/"
+    RoutingFilePath = sim_config["Phase1FilePath"]+"routing/starlink/"
     TimeStepDuration = int(constellation_config["SimLength"]["TimeStepDuration"])
     TimeStepCount = int(constellation_config["SimLength"]["TimeStepCount"])
     StartDateTime = constellation_config["StartDateTime"]
@@ -1294,7 +1294,8 @@ def main():
             source_devName = str(source_devName)
         if type(dest_devName) is not str:
             dest_devName = str(dest_devName)
-        nodeIndexFilePath = constellation_config["Phase1FilePath"]+"node_indices/starlink/nodeindex_"+str(constellation_config["Sim_Date_Time"]["StartYear"])+"_"+str(constellation_config["Sim_Date_Time"]["StartMonth"])+"_"+str(constellation_config["Sim_Date_Time"]["StartDay"])+"_"+str(constellation_config["Sim_Date_Time"]["StartHour"])+"_"+str(constellation_config["Sim_Date_Time"]["StartMinute"])+"_"+str(float(constellation_config["Sim_Date_Time"]["StartSecond"]))
+        print('..............................................................................................', constellation_config)
+        nodeIndexFilePath = sim_config["Phase1FilePath"]+"node_indices/starlink/nodeindex_"+str(constellation_config["Sim_Date_Time"]["StartYear"])+"_"+str(constellation_config["Sim_Date_Time"]["StartMonth"])+"_"+str(constellation_config["Sim_Date_Time"]["StartDay"])+"_"+str(constellation_config["Sim_Date_Time"]["StartHour"])+"_"+str(constellation_config["Sim_Date_Time"]["StartMinute"])+"_"+str(float(constellation_config["Sim_Date_Time"]["StartSecond"]))+".txt"
         nodeIndexDict = spacenet_connectivity_optimizer.load_node_index_dict(nodeIndexFilePath)
         minimalNodeList, routeByIntervalDict = spacenet_connectivity_optimizer.find_minimal_node_list((ConnectivityMatrixPath, ConnectivityFilePrefix, ConnectivityFileSuffix), (RoutingFilePath, RoutingFilePrefix, RoutingFileSuffix), (StartDateTime, TimeStepCount, TimeStepDuration), (source_devName, dest_devName), nodeIndexDict)
         if global_verbose:

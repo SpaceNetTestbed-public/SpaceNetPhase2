@@ -1,7 +1,6 @@
 # Constellation configuration template for SpaceNet Phase 2
 TotalSatCnt: <sat_count>
 TotalGSCnt: <gs_count>
-Phase1FilePath: <phase1_output_file_location>
 SimLength:
     TimeStepDuration: <interval_duration>
     TimeStepCount: <interval_count>

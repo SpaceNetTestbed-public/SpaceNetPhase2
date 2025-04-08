@@ -358,7 +358,7 @@ class iperfApp:
         if os.path.exists(f"{self.output_path}{self.client_output_filename}"):
             print(f"(spacenet_app_manager:iperfApp:init) Deleting existing output file {self.output_path}{self.client_output_filename}")
             try:
-                os.remove(f"{self.output_path}{self.server_output_filename}")
+                os.remove(f"{self.output_path}{self.client_output_filename}")
             except FileNotFoundError:
                 print(f"(spacenet_app_manager:iperfApp:init) Unable to delete file")
 
@@ -380,11 +380,11 @@ class iperfApp:
             print("*** Running Iperf\n")
             print("Iperf from ", self.app_source_ip, " to ", self.app_dest_ip)
             print(f"Pausing at interval change: {self.pause_at_interval_change}")
-        cmdString = f"iperf -s -p 5201 > {self.output_path}{self.server_output_filename} &"
+        cmdString = f"iperf -s -p 5201 >> {self.output_path}{self.server_output_filename} &"
         if self.verbose:
             print(f"{self.app_dest_devName}: {cmdString}")
         self.app_dest_object.cmd(cmdString)
-        cmdString = f"iperf -c {self.app_dest_ip} -p 5201 -t {str(self.app_run_time)} -i 1 > {self.output_path}{self.client_output_filename} &"
+        cmdString = f"iperf -c {self.app_dest_ip} -p 5201 -t {str(appRunTime)} -i 1 >> {self.output_path}{self.client_output_filename} &"
         if self.verbose:
             print(f"{self.app_source_devName}: {cmdString}")
         self.app_source_object.cmd(cmdString)
