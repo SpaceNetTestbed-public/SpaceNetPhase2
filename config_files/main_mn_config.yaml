@@ -1,17 +1,23 @@
 # Main configuration script for the SpaceNet Mininet Simulator
 # ~~~ Main Settings ~~~
-ConstellationName: starlink1584_10_12 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
-OutputFilePath: script_output/multi-shell/
+ConstellationName: starlink1814_10_12 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
+ResultsFilePath: /home/spacenet/simulator/gitlab/constellation-simulator-main/multi-shell2/
+Phase1FilePath: /home/spacenet/simulator/gitlab/dynamic-topology-generator/output/output_multi-shell2/Sao_paulo_3pmEST/
 DeleteAppResults: False
 Verbose: True
 Optimize: True
 MonitorResource: False
+SimTimeMode: discrete
+# Technical configurations for link parameters
+PrePing: True # Will have all devices ping neighbors before starting the app
+R2Q: 1 # Rate to quantum ratio for the network links (default is 10). Lower values increase frequency of packet bursts - benefits high latency networks
+DynamicLinkQueueSize: True # Allow custom netem packet queue sizes for links based on bandwidth-delay product (default is 1000). Higher values increase the number of packets that can be buffered, but increases memory usage
 # ~~~ App configurations ~~~
 AppName: Ping # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
-SourceDeviceName: 1814 #1609 # 101, 501, 1001, 2001  #Tokyo
-DestDeviceName: 1840 #1585 # 100, 500, 1000, 2000  #McMurdo station
+SourceDeviceName: 1840
+DestDeviceName: 1815
 PauseAtIntervalChange: True # Will pause app while network links and routes are updated, then resume
 # For CLI
 CLIStartInterval: 0

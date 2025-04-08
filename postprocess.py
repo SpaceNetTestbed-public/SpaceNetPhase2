@@ -109,8 +109,14 @@ def separate_content_by_test(
             # Reference index
             ref_indx = words.index('sec')
 
-            # Return data
-            return np.array([check_unit_scaling(words[ref_indx+1], words[ref_indx+2]), check_unit_scaling(words[ref_indx+3], words[ref_indx+4])])
+            # Remove summaries and other irrelevant data
+            timestamp = words[ref_indx-1]
+            start_sec, end_sec = timestamp.split('-')
+            sec_dif = float(end_sec) - float(start_sec)
+
+            if sec_dif == 1.0:
+                # Return data
+                return np.array([check_unit_scaling(words[ref_indx+1], words[ref_indx+2]), check_unit_scaling(words[ref_indx+3], words[ref_indx+4])])
 
     elif test_type == 'ping':
 
@@ -159,7 +165,7 @@ def read_text_file(
 
             # Length of file
             num_lines = len(open(path_to_text_file if os.path.exists(path_to_text_file) else os.path.join(input_dir, path_to_text_file), 'r').readlines())
-           
+            
             # Create Thread pool
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
 
@@ -171,7 +177,7 @@ def read_text_file(
         # Shut down thread pool
         executor.shutdown()
 
-        # Filter output and return
+        # Filter output and return 
         return np.vstack([array for array in output if array is not None])
     
     else:
@@ -218,8 +224,6 @@ def compute_mean_and_stddev(
 # ----------------------------------------------------- #
 def plot_network_utility_results(
                                 path_to_text_file,
-                                main_config,
-                                sat_config,
                                 input_dir,
                                 output_dir,
                                 test_type,
@@ -245,13 +249,6 @@ def plot_network_utility_results(
     dataset = read_text_file(path_to_text_file=path_to_text_file, input_dir=input_dir,
                              test_type=test_type, num_workers=num_workers)
 
-    # Simulation configuration file
-    sat_config_file = yaml.safe_load(open(sat_config, 'r'))
-    main_config_file = yaml.safe_load(open(main_config, 'r'))
-
-    # Determine the timestep of simulation
-    ts = np.float64(sat_config_file['EpochIntervalDuration'])
-
     # Plot the data
     if test_type == "iperf":
 
@@ -259,7 +256,9 @@ def plot_network_utility_results(
         bandwidth_data = dataset[:, 1]
 
         # Generate time array
-        time_array = [i * ts for i in range(int(len(bandwidth_data)/ts))]
+        time_array = [i for i in range(len(bandwidth_data))]
+        print(time_array)
+        print(bandwidth_data)
 
         # Plot the points
         plt.scatter(time_array, bandwidth_data, color='black')
@@ -271,7 +270,7 @@ def plot_network_utility_results(
         plt.grid(visible=True, which='major', axis='both', color='k', linestyle='-', linewidth=0.5)
 
         # Plot title
-        plt.title("IPerf3 Test: " + "gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + " - gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt']) + " Sim Length: " + str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount']) + "s")
+        plt.title("IPerf3 Test Results")
 
         # Axis labels
         plt.xlabel('Time (s)')
@@ -299,7 +298,7 @@ def plot_network_utility_results(
         plt.grid(visible=True, which='major', axis='both', color='k', linestyle='-', linewidth=0.5)
         
         # Plot title
-        plt.title("Ping Test: " + "gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + " - gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt']) + " Sim Length: " + str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount']) + "s")
+        plt.title("Ping Test Results")
 
         # Axis labels
         plt.xlabel('ICMP Sequence Number')
@@ -308,16 +307,14 @@ def plot_network_utility_results(
         # Limit x-axis to start at 0
         plt.xlim(0, seq_array[-1])
 
-        # Save plot as a .png
-        plt.savefig(output_dir+"plots/" + test_type+"_gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + "_gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt'])+'_'+str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount'])+'.png')
+    # Save plot as a .png
+    plt.savefig(output_dir+"plots/" + test_type+'_plot.png')
     
 
 # ----------------------------------------------------- #
 # FUNCTION 6 : SAVE RESULTS TO A CSV FILE    	        #
 # ----------------------------------------------------- #
 def write_to_csv(path_to_text_file,
-                 main_config,
-                 sat_config,
                  input_dir,
                  output_dir,
                  test_type,
@@ -339,33 +336,43 @@ def write_to_csv(path_to_text_file,
         CSV file    
     """
 
-    # Simulation configuration file
-    sat_config_file = yaml.safe_load(open(sat_config, 'r'))
-    main_config_file = yaml.safe_load(open(main_config, 'r'))
-
     # Read file and extract contents from dataset
     dataset = read_text_file(path_to_text_file=path_to_text_file, input_dir=input_dir,
                              test_type=test_type, num_workers=num_workers)
-    latency_data = dataset[:, 0]
-    seq_array = [i for i in range(len(latency_data))]
+    if test_type == 'iperf':
+        data = dataset[:, 1]
+    elif test_type == 'ping':
+        data = dataset[:, 0]
+    x_array = [i for i in range(len(data))]
     
     # Ensure both arrays have the same length
-    if len(seq_array) != len(latency_data):
+    if len(x_array) != len(data):
         raise ValueError("Arrays must have the same length")
     
     # Define filename and directory
-    filename = output_dir+"csv/"+test_type+"_gs" + str(main_config_file['SourceDeviceName'] - sat_config_file['TotalSatCnt']) + "_gs" + str(main_config_file['DestDeviceName'] - sat_config_file['TotalSatCnt'])+'_'+str(sat_config_file['EpochIntervalDuration'] * sat_config_file['EpochIntervalCount'])+'.csv'
+    filename = output_dir+test_type+'_sheet.csv'
 
     # Open the file in write mode
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
+
+        if test_type == 'iperf':
+
+            # Write the header
+            writer.writerow(['Second', 'Mbits/sec'])
+
+            # Write the data rows
+            for sec, throughput in zip(x_array, data):
+                writer.writerow([sec, throughput])
+
+        elif test_type == 'ping': 
         
-        # Write the header
-        writer.writerow(['Sequence', 'Latency'])
+            # Write the header
+            writer.writerow(['Sequence', 'Latency'])
         
-        # Write the data rows
-        for seq, latency in zip(seq_array, latency_data):
-            writer.writerow([seq, latency])
+            # Write the data rows
+            for seq, latency in zip(x_array, data):
+                writer.writerow([seq, latency])
 
 # =================================================================================== #
 # --------------------------------------- RUN --------------------------------------- #
@@ -375,8 +382,8 @@ if __name__ == "__main__":
 
 
     # Read config file
-    if os.path.exists('../analysis/postprocess_config.yml'):
-        with open('../analysis/postprocess_config.yml', 'r') as config_file:
+    if os.path.exists('./config_files/postprocess_config.yml'):
+        with open('./config_files/postprocess_config.yml', 'r') as config_file:
             config_data = yaml.safe_load(config_file)
 
     # Compute mean and std. dev.
@@ -385,15 +392,13 @@ if __name__ == "__main__":
         
     # Plot the results
     if config_data['plot']:
-        plot = plot_network_utility_results(path_to_text_file=config_data['data_file'], main_config=config_data['main_config'],
-                                            sat_config=config_data['sat_config'], input_dir=config_data['input_dir'], 
+        plot = plot_network_utility_results(path_to_text_file=config_data['data_file'], input_dir=config_data['input_dir'], 
                                             output_dir=config_data['output_dir'], test_type=config_data['test_type'], 
                                             num_workers=int(config_data['threads']))
         
     # Save the results to a CSV file
     if config_data['csv']:
-        write_to_csv(path_to_text_file=config_data['data_file'], main_config=config_data['main_config'],
-                     sat_config=config_data['sat_config'], input_dir=config_data['input_dir'], 
+        write_to_csv(path_to_text_file=config_data['data_file'], input_dir=config_data['input_dir'], 
                      output_dir=config_data['output_dir'], test_type=config_data['test_type'], 
                      num_workers=int(config_data['threads']))
         
