@@ -1,0 +1,227 @@
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.42 port 40306 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  6.00 MBytes  50.3 Mbits/sec
+[  1] 2.0000-3.0000 sec  5.75 MBytes  48.2 Mbits/sec
+[  1] 3.0000-4.0000 sec  3.88 MBytes  32.5 Mbits/sec
+[  1] 4.0000-5.0000 sec  3.88 MBytes  32.5 Mbits/sec
+[  1] 5.0000-6.0000 sec  5.75 MBytes  48.2 Mbits/sec
+[  1] 6.0000-7.0000 sec  4.00 MBytes  33.6 Mbits/sec
+[  1] 7.0000-8.0000 sec  6.12 MBytes  51.4 Mbits/sec
+[  1] 8.0000-9.0000 sec  4.38 MBytes  36.7 Mbits/sec
+[  1] 9.0000-10.0000 sec  6.88 MBytes  57.7 Mbits/sec
+[  1] 10.0000-11.0255 sec   128 KBytes  1.02 Mbits/sec
+[  1] 0.0000-11.0255 sec  48.0 MBytes  36.5 Mbits/sec
+[27] Change to Interval Number 1
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.46 port 41726 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  6.00 MBytes  50.3 Mbits/sec
+[  1] 2.0000-3.0000 sec  5.50 MBytes  46.1 Mbits/sec
+[  1] 3.0000-4.0000 sec  3.75 MBytes  31.5 Mbits/sec
+[  1] 4.0000-5.0000 sec  3.75 MBytes  31.5 Mbits/sec
+[  1] 5.0000-6.0000 sec  5.75 MBytes  48.2 Mbits/sec
+[  1] 6.0000-7.0000 sec  3.88 MBytes  32.5 Mbits/sec
+[  1] 7.0000-8.0000 sec  6.00 MBytes  50.3 Mbits/sec
+[  1] 8.0000-9.0000 sec  4.25 MBytes  35.7 Mbits/sec
+[  1] 9.0000-10.0000 sec  6.88 MBytes  57.7 Mbits/sec
+[  1] 10.0000-11.0926 sec   128 KBytes   960 Kbits/sec
+[  1] 0.0000-11.0926 sec  47.1 MBytes  35.6 Mbits/sec
+[51] Change to Interval Number 2
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.46 port 54098 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  6.12 MBytes  51.4 Mbits/sec
+[  1] 2.0000-3.0000 sec  5.75 MBytes  48.2 Mbits/sec
+[  1] 3.0000-4.0000 sec  4.00 MBytes  33.6 Mbits/sec
+[  1] 4.0000-5.0000 sec  3.88 MBytes  32.5 Mbits/sec
+[  1] 5.0000-6.0000 sec  6.00 MBytes  50.3 Mbits/sec
+[  1] 6.0000-7.0000 sec  4.00 MBytes  33.6 Mbits/sec
+[  1] 7.0000-8.0000 sec  6.25 MBytes  52.4 Mbits/sec
+[  1] 8.0000-9.0000 sec  4.38 MBytes  36.7 Mbits/sec
+[  1] 9.0000-10.0000 sec  7.12 MBytes  59.8 Mbits/sec
+[  1] 10.0000-11.1988 sec   128 KBytes   875 Kbits/sec
+[  1] 0.0000-11.1988 sec  48.9 MBytes  36.6 Mbits/sec
+[73] Change to Interval Number 3
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.46 port 58528 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  1.00 MBytes  8.39 Mbits/sec
+[  1] 2.0000-3.0000 sec  1.88 MBytes  15.7 Mbits/sec
+[  1] 3.0000-4.0000 sec  1.50 MBytes  12.6 Mbits/sec
+[  1] 4.0000-5.0000 sec  1.75 MBytes  14.7 Mbits/sec
+[  1] 5.0000-6.0000 sec  1.93 MBytes  16.2 Mbits/sec
+[  1] 6.0000-7.0000 sec  2.05 MBytes  17.2 Mbits/sec
+[  1] 7.0000-8.0000 sec  1.99 MBytes  16.7 Mbits/sec
+[  1] 8.0000-9.0000 sec  1.93 MBytes  16.2 Mbits/sec
+[  1] 9.0000-10.0000 sec  2.11 MBytes  17.7 Mbits/sec
+[  1] 10.0000-12.8101 sec  57.8 KBytes   168 Kbits/sec
+[  1] 0.0000-12.8101 sec  17.4 MBytes  11.4 Mbits/sec
+[102] Change to Interval Number 4
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.78 port 42178 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  3.38 MBytes  28.3 Mbits/sec
+[  1] 2.0000-3.0000 sec  2.12 MBytes  17.8 Mbits/sec
+[  1] 3.0000-4.0000 sec  2.12 MBytes  17.8 Mbits/sec
+[  1] 4.0000-5.0000 sec  3.38 MBytes  28.3 Mbits/sec
+[  1] 5.0000-6.0000 sec  2.12 MBytes  17.8 Mbits/sec
+[  1] 6.0000-7.0000 sec  2.38 MBytes  19.9 Mbits/sec
+[  1] 7.0000-8.0000 sec  3.62 MBytes  30.4 Mbits/sec
+[  1] 8.0000-9.0000 sec  2.62 MBytes  22.0 Mbits/sec
+[  1] 9.0000-10.0000 sec  4.25 MBytes  35.7 Mbits/sec
+[  1] 10.0000-11.0294 sec   128 KBytes  1.02 Mbits/sec
+[  1] 0.0000-11.0294 sec  27.4 MBytes  20.8 Mbits/sec
+[131] Change to Interval Number 5
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.78 port 48682 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  3.38 MBytes  28.3 Mbits/sec
+[  1] 2.0000-3.0000 sec  2.25 MBytes  18.9 Mbits/sec
+[  1] 3.0000-4.0000 sec  2.25 MBytes  18.9 Mbits/sec
+[  1] 4.0000-5.0000 sec  3.38 MBytes  28.3 Mbits/sec
+[  1] 5.0000-6.0000 sec  2.38 MBytes  19.9 Mbits/sec
+[  1] 6.0000-7.0000 sec  3.50 MBytes  29.4 Mbits/sec
+[  1] 7.0000-8.0000 sec  2.50 MBytes  21.0 Mbits/sec
+[  1] 8.0000-9.0000 sec  4.00 MBytes  33.6 Mbits/sec
+[  1] 9.0000-10.0000 sec  3.00 MBytes  25.2 Mbits/sec
+[  1] 10.0000-10.9653 sec   128 KBytes  1.09 Mbits/sec
+[  1] 0.0000-10.9653 sec  28.0 MBytes  21.4 Mbits/sec
+[159] Change to Interval Number 6
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.78 port 46682 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.38 MBytes  11.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  10.6 MBytes  89.1 Mbits/sec
+[  1] 2.0000-3.0000 sec  11.1 MBytes  93.3 Mbits/sec
+[  1] 3.0000-4.0000 sec  8.62 MBytes  72.4 Mbits/sec
+[  1] 4.0000-5.0000 sec  8.62 MBytes  72.4 Mbits/sec
+[  1] 5.0000-6.0000 sec  12.6 MBytes   106 Mbits/sec
+[  1] 6.0000-7.0000 sec  8.50 MBytes  71.3 Mbits/sec
+[  1] 7.0000-8.0000 sec  13.0 MBytes   109 Mbits/sec
+[  1] 8.0000-9.0000 sec  8.88 MBytes  74.4 Mbits/sec
+[  1] 9.0000-10.0000 sec  9.00 MBytes  75.5 Mbits/sec
+[  1] 10.0000-10.9694 sec   128 KBytes  1.08 Mbits/sec
+[  1] 0.0000-10.9694 sec  92.5 MBytes  70.7 Mbits/sec
+[181] Change to Interval Number 7
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.78 port 51326 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec   384 KBytes  3.15 Mbits/sec
+[  1] 1.0000-2.0000 sec   146 KBytes  1.20 Mbits/sec
+[  1] 2.0000-3.0000 sec  86.3 KBytes   707 Kbits/sec
+[  1] 3.0000-4.0000 sec  63.6 KBytes   521 Kbits/sec
+[  1] 4.0000-5.0000 sec   127 KBytes  1.04 Mbits/sec
+[  1] 5.0000-6.0000 sec   127 KBytes  1.04 Mbits/sec
+[  1] 6.0000-7.0000 sec   127 KBytes  1.04 Mbits/sec
+[  1] 7.0000-8.0000 sec   255 KBytes  2.09 Mbits/sec
+[  1] 8.0000-9.0000 sec   255 KBytes  2.09 Mbits/sec
+[  1] 9.0000-10.0000 sec   255 KBytes  2.09 Mbits/sec
+[204] Change to Interval Number 8
+[  1] 10.0000-20.4938 sec   127 KBytes  99.4 Kbits/sec
+[  1] 0.0000-20.4938 sec  1.91 MBytes   781 Kbits/sec
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.78 port 42904 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.38 MBytes  11.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  6.12 MBytes  51.4 Mbits/sec
+[  1] 2.0000-3.0000 sec  3.88 MBytes  32.5 Mbits/sec
+[  1] 3.0000-4.0000 sec  5.88 MBytes  49.3 Mbits/sec
+[  1] 4.0000-5.0000 sec  4.12 MBytes  34.6 Mbits/sec
+[  1] 5.0000-6.0000 sec  4.00 MBytes  33.6 Mbits/sec
+[  1] 6.0000-7.0000 sec  6.25 MBytes  52.4 Mbits/sec
+[  1] 7.0000-8.0000 sec  4.38 MBytes  36.7 Mbits/sec
+[  1] 8.0000-9.0000 sec  4.50 MBytes  37.7 Mbits/sec
+[  1] 9.0000-10.0000 sec  6.88 MBytes  57.7 Mbits/sec
+[  1] 10.0000-11.1791 sec   128 KBytes   889 Kbits/sec
+[  1] 0.0000-11.1791 sec  47.5 MBytes  35.6 Mbits/sec
+[233] Change to Interval Number 9
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.78 port 51196 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.25 MBytes  10.5 Mbits/sec
+[  1] 1.0000-2.0000 sec  6.00 MBytes  50.3 Mbits/sec
+[  1] 2.0000-3.0000 sec  6.00 MBytes  50.3 Mbits/sec
+[  1] 3.0000-4.0000 sec  4.88 MBytes  40.9 Mbits/sec
+[  1] 4.0000-5.0000 sec  8.88 MBytes  74.4 Mbits/sec
+[  1] 5.0000-6.0000 sec  11.2 MBytes  94.4 Mbits/sec
+[  1] 6.0000-7.0000 sec  14.4 MBytes   121 Mbits/sec
+[  1] 7.0000-8.0000 sec  4.97 MBytes  41.7 Mbits/sec
+[  1] 8.0000-9.0000 sec  8.70 MBytes  73.0 Mbits/sec
+[  1] 9.0000-10.0000 sec  9.01 MBytes  75.6 Mbits/sec
+[  1] 10.0000-11.3183 sec   102 KBytes   631 Kbits/sec
+[  1] 0.0000-11.3183 sec  75.4 MBytes  55.9 Mbits/sec
+[256] Change to Interval Number 10
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.98 port 59380 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  2.25 MBytes  18.9 Mbits/sec
+[  1] 1.0000-2.0000 sec  6.12 MBytes  51.4 Mbits/sec
+[  1] 2.0000-3.0000 sec  6.25 MBytes  52.4 Mbits/sec
+[  1] 3.0000-4.0000 sec  8.00 MBytes  67.1 Mbits/sec
+[  1] 4.0000-5.0000 sec  10.1 MBytes  84.9 Mbits/sec
+[  1] 5.0000-6.0000 sec  13.0 MBytes   109 Mbits/sec
+[  1] 6.0000-7.0000 sec  10.4 MBytes  87.0 Mbits/sec
+[  1] 7.0000-8.0000 sec  16.1 MBytes   135 Mbits/sec
+[  1] 8.0000-9.0000 sec  10.6 MBytes  89.1 Mbits/sec
+[  1] 9.0000-10.0000 sec  15.9 MBytes   133 Mbits/sec
+[  1] 10.0000-10.9385 sec   128 KBytes  1.12 Mbits/sec
+[  1] 0.0000-10.9385 sec  98.9 MBytes  75.8 Mbits/sec
+[281] Change to Interval Number 11
+------------------------------------------------------------
+Client connecting to 11.0.0.2, TCP port 5201
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 11.0.20.98 port 55726 connected with 11.0.0.2 port 5201
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-1.0000 sec  1.00 MBytes  8.39 Mbits/sec
+[  1] 1.0000-2.0000 sec  12.0 MBytes   101 Mbits/sec
+[  1] 2.0000-3.0000 sec  11.0 MBytes  92.3 Mbits/sec
+[  1] 3.0000-4.0000 sec  7.38 MBytes  61.9 Mbits/sec
+[  1] 4.0000-5.0000 sec  7.50 MBytes  62.9 Mbits/sec
+[  1] 5.0000-6.0000 sec  11.2 MBytes  94.4 Mbits/sec
+[  1] 6.0000-7.0000 sec  7.50 MBytes  62.9 Mbits/sec
+[  1] 7.0000-8.0000 sec  11.6 MBytes  97.5 Mbits/sec
+[  1] 8.0000-9.0000 sec  7.88 MBytes  66.1 Mbits/sec
+[  1] 9.0000-10.0000 sec  12.4 MBytes   104 Mbits/sec
+[  1] 10.0000-11.1867 sec   128 KBytes   884 Kbits/sec
+[  1] 0.0000-11.1867 sec  89.6 MBytes  67.2 Mbits/sec

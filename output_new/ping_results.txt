@@ -1,0 +1,192 @@
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=40 time=290 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=40 time=199 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=40 time=242 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=40 time=237 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=40 time=214 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=40 time=196 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=40 time=233 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=40 time=269 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=40 time=296 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=40 time=252 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 12073ms
+rtt min/avg/max/mdev = 195.832/242.748/296.174/33.055 ms
+[24] Change to Interval Number 1
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=39 time=239 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=39 time=213 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=39 time=220 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=39 time=224 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=39 time=448 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=39 time=222 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=39 time=236 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=39 time=237 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=39 time=239 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=39 time=200 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 9639ms
+rtt min/avg/max/mdev = 199.583/247.752/448.221/67.928 ms
+[45] Change to Interval Number 2
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=39 time=204 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=39 time=273 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=39 time=234 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=39 time=256 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=39 time=223 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=39 time=299 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=39 time=270 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=39 time=241 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=39 time=268 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=39 time=272 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 11033ms
+rtt min/avg/max/mdev = 203.614/254.091/299.486/26.998 ms
+[67] Change to Interval Number 3
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=42 time=435 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=42 time=217 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=42 time=200 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=42 time=204 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=42 time=261 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=42 time=241 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=42 time=259 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=42 time=225 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=42 time=256 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=42 time=274 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 12219ms
+rtt min/avg/max/mdev = 200.385/257.346/434.934/63.840 ms
+[90] Change to Interval Number 4
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=35 time=450 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=35 time=307 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=35 time=240 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=35 time=203 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=35 time=240 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=35 time=262 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=35 time=230 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=35 time=245 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=35 time=249 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=35 time=259 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 9732ms
+rtt min/avg/max/mdev = 202.968/268.489/449.649/65.396 ms
+[113] Change to Interval Number 5
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=39 time=291 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=39 time=234 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=39 time=212 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=39 time=287 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=39 time=228 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=39 time=238 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=39 time=248 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=39 time=253 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=39 time=231 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=39 time=245 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 10190ms
+rtt min/avg/max/mdev = 211.929/246.724/291.458/23.927 ms
+[140] Change to Interval Number 6
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=39 time=218 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=39 time=205 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=39 time=256 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=39 time=223 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=39 time=201 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=39 time=246 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=39 time=236 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=39 time=231 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=39 time=254 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=39 time=235 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 10619ms
+rtt min/avg/max/mdev = 201.312/230.570/255.978/17.969 ms
+[160] Change to Interval Number 7
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=39 time=208 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=39 time=270 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=39 time=228 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=39 time=216 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=39 time=207 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=39 time=246 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=39 time=219 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=39 time=217 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=39 time=212 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=39 time=681 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 9751ms
+rtt min/avg/max/mdev = 207.155/270.408/680.980/138.109 ms
+[181] Change to Interval Number 8
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=34 time=246 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=34 time=230 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=34 time=214 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=34 time=198 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=34 time=242 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=34 time=246 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=34 time=258 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=34 time=326 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=34 time=221 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=34 time=265 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 10801ms
+rtt min/avg/max/mdev = 198.021/244.601/326.004/33.360 ms
+[208] Change to Interval Number 9
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=34 time=212 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=34 time=260 ms
+no answer yet for icmp_seq=3
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=34 time=1320 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=34 time=310 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=34 time=296 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=34 time=241 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=34 time=305 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=34 time=248 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=34 time=279 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=34 time=290 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 11495ms
+rtt min/avg/max/mdev = 212.117/376.185/1320.338/316.105 ms, pipe 2
+[228] Change to Interval Number 10
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=38 time=242 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=38 time=236 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=38 time=201 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=38 time=247 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=38 time=359 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=38 time=221 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=38 time=226 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=38 time=225 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=38 time=252 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=38 time=211 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 9672ms
+rtt min/avg/max/mdev = 200.964/242.014/358.503/41.661 ms
+[251] Change to Interval Number 11
+PING 11.0.0.3 (11.0.0.3) 56(84) bytes of data.
+64 bytes from 11.0.0.3: icmp_seq=1 ttl=37 time=226 ms
+64 bytes from 11.0.0.3: icmp_seq=2 ttl=37 time=255 ms
+64 bytes from 11.0.0.3: icmp_seq=3 ttl=37 time=277 ms
+64 bytes from 11.0.0.3: icmp_seq=4 ttl=37 time=288 ms
+64 bytes from 11.0.0.3: icmp_seq=5 ttl=37 time=223 ms
+64 bytes from 11.0.0.3: icmp_seq=6 ttl=37 time=219 ms
+64 bytes from 11.0.0.3: icmp_seq=7 ttl=37 time=269 ms
+64 bytes from 11.0.0.3: icmp_seq=8 ttl=37 time=388 ms
+64 bytes from 11.0.0.3: icmp_seq=9 ttl=37 time=212 ms
+64 bytes from 11.0.0.3: icmp_seq=10 ttl=37 time=308 ms
+
+--- 11.0.0.3 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 9019ms
+rtt min/avg/max/mdev = 212.498/266.694/388.285/50.833 ms
