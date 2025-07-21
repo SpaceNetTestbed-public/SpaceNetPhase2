@@ -1,8 +1,8 @@
 # Main configuration script for the SpaceNet Mininet Simulator
 # ~~~ Main Settings ~~~
-ConstellationName: starlink500_10_12base # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
-ResultsFilePath: /home/spacenet/simulator/gitlab/constellation-simulator-main/script_output/Alexa_OC_Base/
-Phase1FilePath: /home/spacenet/simulator/gitlab/dynamic-topology-generator/output/Alexa_OC_Base/
+ConstellationName: starlink2_0600 # Name must match constellation config file (fakelink6_10_2, onefib66_30_18, starlink72_1_10, starlink72_30_29)
+ResultsFilePath: /home/spacenet/simulator/gitlab/constellation-simulator-main/script_output/poster/normal/
+Phase1FilePath: /home/spacenet/simulator/gitlab/dynamic-topology-generator/output/poster/normal/
 DeleteAppResults: False
 Verbose: True
 Optimize: True
@@ -16,8 +16,8 @@ DynamicLinkQueueSize: True # Allow custom netem packet queue sizes for links bas
 AppName: Ping # Options- Ping, iPerf, CLI
 # For Ping and iPerf
 # Useable keywords- firstGS, lastGS, firstSat, lastSat
-SourceDeviceName: 517      #1839
-DestDeviceName:  521       #1830
+SourceDeviceName: 1825      #1839
+DestDeviceName:  1816       #1830
 PauseAtIntervalChange: True # Will pause app while network links and routes are updated, then resume
 # For CLI
 CLIStartInterval: 0
