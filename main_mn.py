@@ -470,8 +470,7 @@ def parse_connectivity_file(ConnectivityFileName, TotalSatCnt, nodeList = None):
     LinkDict = {}
     with open(ConnectivityFileName, 'r') as file:
         for line in file:
-            NodeAName, NodeBName, LinkDelay, LinkBandwidth, Congestion = line.split(',') #To handle congestion from phase1
-            #NodeAName, NodeBName, LinkDelay, LinkBandwidth = line.split(',')
+            NodeAName, NodeBName, LinkDelay, LinkBandwidth = line.split(',')
             if nodeList is not None:
                 if NodeAName not in nodeList or NodeBName not in nodeList: # if using minimalNodeList, want only links between nodes in the list
                     #print(f"Skipping link between {NodeAName} and {NodeBName} as one or both are not in the minimal node list", end="\r")
