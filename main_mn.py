@@ -1162,12 +1162,13 @@ def main():
         return
     
     if len(sys.argv) > 1:
-        global config_file_path, config_file_name
+        global config_file_path, config_file_name, sat_config_sub_path
         config_file_path, config_file_name = os.path.split(sys.argv[1])
         if config_file_path == "":
             config_file_path = "./"
         else:
             config_file_path += "/" # returning the trailing slash to the path
+        sat_config_sub_path = sys.argv[2]
         print(f"Using config file: {config_file_name}")
 
     global devDict, CurrRoutingDict, PrevRoutingDict
