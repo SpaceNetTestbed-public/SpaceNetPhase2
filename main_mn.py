@@ -642,10 +642,15 @@ def parse_interval_routing_file(RoutingFileName, TotalSatCnt, TotalGSCnt, CurrEp
     print(f"Interval Routes Dictionary: {IntervalRoutesDict}")
     for gsName in gsList:
         satName = None
-        for linkName in AllLinksDict[CurrEpochString]: # use AllLinksDict to find the satellite connected to the ground station
-            if gsName in linkName:
-                satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
-                break
+        candidates = [
+            linkName.split('_')[0]
+            for linkName in AllLinksDict[CurrEpochString]
+            if gsName in linkName.split('_')
+        ]
+        if route:
+            endpoints = {route[0], route[-1]}
+            candidates = [sat for sat in candidates if sat in endpoints]
+        satName = candidates[0] if candidates else None
         if satName == None:
             print("Error: Could not find satellite connected to ground station ", gsName)
             continue
@@ -708,10 +713,14 @@ def parse_all_routing_files(RoutingFilePath, RoutingFilePrefix, RoutingFileSuffi
 # ================== Node Routing Functions ==================
 def set_GS_default_route(gsName, CurrEpochString, gRPC_message = False):
     satName = None
-    for linkName in AllLinksDict[CurrEpochString]: # use AllLinksDict to find the satellite connected to the ground station
-        if gsName in linkName:
-            satName = linkName.split('_')[0] # Sat name will always be listed first in link name due to GS having higher name values
-            break
+    interval_routes = fullRoutingDict[CurrEpochString]
+    for linkName in AllLinksDict[CurrEpochString]:
+        nodes = linkName.split('_')
+        if gsName in nodes:
+            candidate = nodes[0]
+            if candidate in interval_routes:
+                satName = candidate
+                break
     if satName == None:
         print("\033[31m(set_GS_default_route) Error: Could not find satellite connected to ground station \033[0m", gsName)
         return -1
@@ -1082,7 +1091,7 @@ def update_interval():
                 linkNameFound = True
                 break
         if linkNameFound: # if the node was not connected to a satellite in the previous epoch, check if link has changed and needs to be removed/updated
-            if prevLinkName not in currLinkNameList:
+            if set_GS_default_route(nodeName, PrevEpochString, gRPC_message=True) != set_GS_default_route(nodeName, CurrEpochString, gRPC_message=True):
                 if global_verbose: print(f"  [{current_second}] \033[34mChange in connected sat for ground station {nodeName}\033[0m")
                 try:
                     gsObject = net.get(nodeName)
